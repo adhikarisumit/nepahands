@@ -1,0 +1,103 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* Default brand palette (terracotta) as RGB channels; overridden from Admin → Branding. */
+  :root {
+    --clay-50: 251 247 243;
+    --clay-100: 245 236 226;
+    --clay-200: 234 214 193;
+    --clay-300: 220 185 151;
+    --clay-400: 204 150 107;
+    --clay-500: 192 124 77;
+    --clay-600: 178 103 65;
+    --clay-700: 148 82 55;
+    --clay-800: 120 68 51;
+    --clay-900: 98 57 44;
+    --clay-950: 53 28 21;
+  }
+  body {
+    @apply bg-clay-50 text-ink antialiased;
+  }
+  h1, h2, h3 {
+    @apply font-sans tracking-tight;
+  }
+}
+
+@layer components {
+  .container-x {
+    @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8;
+  }
+  /* Squared-off, restrained controls (rounded-md) read as more "retail" than pill buttons. */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-md px-5 py-2.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-clay-400 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-primary {
+    @apply btn bg-clay-700 text-white hover:bg-clay-800 active:bg-clay-900;
+  }
+  .btn-outline {
+    @apply btn border border-ink/15 bg-white text-ink hover:border-ink/40;
+  }
+  .btn-ghost {
+    @apply btn text-ink hover:bg-ink/5;
+  }
+  .btn-danger {
+    @apply btn bg-red-600 text-white hover:bg-red-700;
+  }
+  .input {
+    /* text-base on phones: iOS Safari zooms the page when focusing inputs smaller than 16px */
+    @apply w-full rounded-md border border-ink/15 bg-white px-3 py-2.5 text-base outline-none transition-colors placeholder:text-ink/35 focus:border-ink/50 focus:ring-1 focus:ring-ink/20 sm:text-sm;
+  }
+  .label {
+    @apply mb-1.5 block text-sm font-medium text-ink/80;
+  }
+  .card {
+    @apply rounded-lg border border-ink/10 bg-white;
+  }
+  /* Small uppercase section label, e.g. table headers and summary headings */
+  .eyebrow {
+    @apply text-xs font-medium uppercase tracking-[0.12em] text-ink/50;
+  }
+  .badge {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium capitalize;
+  }
+  /* Readable long-form text for the legal pages */
+  .legal {
+    @apply text-[15px] leading-7 text-ink/80;
+  }
+  .legal h1 {
+    @apply text-3xl font-semibold text-ink sm:text-4xl;
+  }
+  .legal .updated {
+    @apply mt-2 text-sm text-ink/50;
+  }
+  .legal h2 {
+    @apply mt-10 scroll-mt-28 text-xl font-semibold text-ink;
+  }
+  .legal h3 {
+    @apply mt-6 font-semibold text-ink;
+  }
+  .legal p {
+    @apply mt-3;
+  }
+  .legal ul {
+    @apply mt-3 list-disc space-y-1.5 pl-5;
+  }
+  .legal a {
+    @apply text-clay-700 underline underline-offset-2 hover:text-clay-900;
+  }
+  .legal .callout {
+    @apply mt-6 rounded-xl border border-clay-100 bg-white p-4 text-sm;
+  }
+  /* min width so tables scroll sideways inside their overflow-x-auto card on phones instead of squashing */
+  .table-x {
+    @apply w-full min-w-[640px] text-left text-sm;
+  }
+  .table-x th {
+    @apply border-b border-clay-100 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-ink/60;
+  }
+  .table-x td {
+    @apply border-b border-clay-50 px-4 py-3 align-middle;
+  }
+}

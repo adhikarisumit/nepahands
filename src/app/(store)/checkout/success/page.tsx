@@ -1,0 +1,102 @@
+import Link from "next/link";
+import { CheckCircle2, Clock } from "lucide-react";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { confirmPaddleTransaction, confirmStripeSession } from "@/lib/orders";
+import { formatPrice } from "@/lib/utils";
+import BankTransferPanel from "@/components/BankTransferPanel";
+import type { Order, StoreSettings } from "@/lib/types";
+import ClearCart from "./ClearCart";
+
+export const metadata = { title: "Order confirmed" };
+export const dynamic = "force-dynamic";
+
+type SP = Promise<{ order?: string; session_id?: string; ptxn?: string; _ptxn?: string }>;
+
+export default async function SuccessPage({ searchParams }: { searchParams: SP }) {
+  const sp = await searchParams;
+  const db = createAdminClient();
+
+  if (!sp.order || !/^[0-9a-f-]{36}$/i.test(sp.order)) {
+    return <Message title="Order not found" text="We couldn't find that order." />;
+  }
+
+  const load = async () => (await db.from("orders").select("*").eq("id", sp.order!).maybeSingle()).data as Order | null;
+  let order = await load();
+  if (!order) return <Message title="Order not found" text="We couldn't find that order." />;
+
+  // Fallback in case the webhook hasn't arrived yet (e.g. local development).
+  if (order.status === "pending" && order.payment_provider !== "bank_transfer") {
+    try {
+      if (order.payment_provider === "stripe" && sp.session_id) await confirmStripeSession(sp.session_id);
+      const txn = sp.ptxn || sp._ptxn;
+      if (order.payment_provider === "paddle" && txn && txn === order.payment_id) await confirmPaddleTransaction(txn);
+    } catch (e) {
+      console.error("Payment confirmation fallback failed", e);
+    }
+    order = (await load()) ?? order;
+  }
+
+  const paid = order.status !== "pending" && order.status !== "cancelled";
+
+  // Bank transfer awaiting payment: show bank details, QR and proof upload.
+  if (order.payment_provider === "bank_transfer" && order.status === "pending") {
+    const { data: settings } = await db.from("store_settings").select("*").eq("id", 1).single();
+    const s = (settings ?? {}) as StoreSettings;
+    return (
+      <div className="container-x max-w-3xl py-14">
+        <div className="mb-8 text-center">
+          <CheckCircle2 className="mx-auto text-sage-600" size={52} />
+          <h1 className="mt-4 text-3xl font-semibold">Order #{order.order_number} placed!</h1>
+          <p className="mt-2 text-ink/70">
+            Transfer the amount below and we&apos;ll ship as soon as your payment is confirmed. Pay soon — items aren&apos;t held until payment arrives.
+          </p>
+        </div>
+        <BankTransferPanel
+          orderId={order.id}
+          orderNumber={order.order_number}
+          total={Number(order.total)}
+          currency={order.currency}
+          bank={s.bank_details ?? {}}
+          qrUrl={s.bank_qr_url ?? null}
+          submittedReference={order.payment_reference ?? null}
+          proofSubmitted={!!order.payment_proof_path}
+        />
+        <div className="mt-8 flex justify-center gap-3">
+          <Link href="/shop" className="btn-outline">Keep shopping</Link>
+          <Link href="/account/orders" className="btn-primary">View my orders</Link>
+        </div>
+        <p className="mt-4 text-center text-xs text-ink/50">Bookmark this page — you can come back to it to submit your payment proof.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="container-x py-20">
+      {paid && <ClearCart />}
+      <div className="card mx-auto max-w-lg p-10 text-center">
+        {paid ? <CheckCircle2 className="mx-auto text-sage-600" size={56} /> : <Clock className="mx-auto text-clay-500" size={56} />}
+        <h1 className="mt-4 text-3xl font-semibold">{paid ? "Thank you for your order!" : "Payment processing"}</h1>
+        <p className="mt-3 text-ink/70">
+          {paid
+            ? `Order #${order.order_number} is confirmed. A receipt has been sent to ${order.email}.`
+            : `We're waiting for payment confirmation for order #${order.order_number}. Refresh this page in a moment.`}
+        </p>
+        <p className="mt-6 text-2xl font-semibold">{formatPrice(order.total, order.currency)}</p>
+        <div className="mt-8 flex justify-center gap-3">
+          <Link href="/shop" className="btn-outline">Keep shopping</Link>
+          <Link href="/account" className="btn-primary">View my orders</Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Message({ title, text }: { title: string; text: string }) {
+  return (
+    <div className="container-x py-24 text-center">
+      <h1 className="text-3xl font-semibold">{title}</h1>
+      <p className="mt-3 text-ink/60">{text}</p>
+      <Link href="/shop" className="btn-primary mt-8">Back to shop</Link>
+    </div>
+  );
+}
