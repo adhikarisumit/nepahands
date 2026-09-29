@@ -82,7 +82,27 @@ npm run dev
 Open http://localhost:3000. The admin panel is at http://localhost:3000/admin.
 
 ### Deploy
-Deploy to Vercel (or any Node host). Add all variables from `.env.example` to the host's environment, set `NEXT_PUBLIC_SITE_URL` to the production URL, and point both webhooks to that domain.
+### Deploy to Vercel
+
+1. **Import the repo** at https://vercel.com/new → pick `nepahands`. Vercel detects Next.js automatically — keep the default
+   build command (`next build`) and output settings.
+2. **Environment variables** (Project → Settings → Environment Variables, for *Production* and *Preview*) — copy the values from your
+   `.env.local`. See `.env.example` for the full list.
+   - Required: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`, `NEXT_PUBLIC_CURRENCY`
+   - Recommended: `NEXT_PUBLIC_SITE_URL` = your live domain (e.g. `https://www.nepahands.com`)
+   - Payments: only add the Stripe / Paddle keys you actually use — leave the others unset.
+   - `NEXT_PUBLIC_*` values are built into the site, so **redeploy after changing them**.
+3. **Deploy.** Then, using your live URL:
+   - **Supabase → Authentication → URL Configuration:** set *Site URL* to your domain and add `https://YOUR_DOMAIN/auth/callback`
+     to *Redirect URLs* (sign-up confirmation and password reset links need this).
+   - **Stripe:** add a webhook endpoint `https://YOUR_DOMAIN/api/webhooks/stripe` and put its signing secret in `STRIPE_WEBHOOK_SECRET`.
+   - **Paddle:** add a notification destination `https://YOUR_DOMAIN/api/webhooks/paddle`, put its secret in `PADDLE_WEBHOOK_SECRET`,
+     and approve your domain in Paddle's checkout settings.
+4. **Region (optional, for speed):** in Project → Settings → Functions, choose the region closest to your Supabase project
+   (e.g. Sydney `syd1` if Supabase is in `ap-southeast-2`).
+
+Notes: uploads that pass through the site (bank-transfer screenshots) are limited to 4 MB because Vercel caps request bodies at
+4.5 MB; product and QR images upload straight to Supabase Storage.
 
 ## Project structure
 ```
