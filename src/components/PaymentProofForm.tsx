@@ -17,7 +17,7 @@ export default function PaymentProofForm({ orderId, submittedReference, proofSub
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!reference.trim() && !file) return void toast.error("Add a transaction ID or a screenshot");
-    if (file && file.size > 5 * 1024 * 1024) return void toast.error("Screenshot must be under 5 MB");
+    if (file && file.size > 4 * 1024 * 1024) return void toast.error("Screenshot must be under 4 MB");
     setLoading(true);
     const fd = new FormData();
     fd.set("reference", reference.trim());

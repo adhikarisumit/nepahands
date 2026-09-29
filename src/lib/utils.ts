@@ -37,7 +37,18 @@ export function formatDate(date: string) {
   return new Date(date).toLocaleDateString(LOCALE, { year: "numeric", month: "short", day: "numeric" });
 }
 
-export const siteUrl = () => (process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000").replace(/\/$/, "");
+/**
+ * Public site address (used for Stripe return URLs). Set NEXT_PUBLIC_SITE_URL to your domain;
+ * on Vercel it falls back to the project's production URL, then the deployment URL.
+ */
+export const siteUrl = () => {
+  const url =
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    (process.env.VERCEL_PROJECT_PRODUCTION_URL && `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`) ||
+    (process.env.VERCEL_URL && `https://${process.env.VERCEL_URL}`) ||
+    "http://localhost:3000";
+  return url.replace(/\/$/, "");
+};
 
 export const PLACEHOLDER_IMG =
   "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='400'><rect width='100%' height='100%' fill='%23f5ece2'/><text x='50%' y='50%' font-family='serif' font-size='28' fill='%23c07c4d' text-anchor='middle' dominant-baseline='middle'>Handmade</text></svg>";

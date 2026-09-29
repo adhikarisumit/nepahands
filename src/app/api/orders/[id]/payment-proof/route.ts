@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const ALLOWED = ["image/png", "image/jpeg", "image/webp", "image/heic", "application/pdf"];
-const MAX_BYTES = 5 * 1024 * 1024;
+// Vercel rejects request bodies over 4.5 MB, so keep uploads that pass through this route under 4 MB.
+const MAX_BYTES = 4 * 1024 * 1024;
 
 /**
  * Customer submits bank-transfer proof. The unguessable order UUID acts as the capability,
@@ -25,7 +26,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (reference) update.payment_reference = reference;
 
   if (file instanceof File && file.size > 0) {
-    if (file.size > MAX_BYTES) return NextResponse.json({ error: "File must be under 5 MB" }, { status: 400 });
+    if (file.size > MAX_BYTES) return NextResponse.json({ error: "File must be under 4 MB" }, { status: 400 });
     if (!ALLOWED.includes(file.type)) return NextResponse.json({ error: "Upload an image or PDF" }, { status: 400 });
     const ext = file.type === "application/pdf" ? "pdf" : file.type.split("/")[1];
     const path = `${id}/${Date.now()}.${ext}`;
