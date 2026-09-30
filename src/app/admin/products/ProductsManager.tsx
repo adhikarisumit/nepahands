@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Boxes, ExternalLink, Pencil, Plus, Trash2 } from "lucide-react";
 import toast from "react-hot-toast";
 import Modal from "@/components/Modal";
+import { deleteOptions, useConfirm } from "@/components/ConfirmDialog";
 import ProductForm from "./ProductForm";
 import { deleteProduct, toggleProduct } from "../actions";
 import type { Category, Product } from "@/lib/types";
@@ -22,6 +23,7 @@ export default function ProductsManager({ products, categories, query, initialOp
     initialOpen === "new" ? null : initialOpen ? products.find((p) => p.id === initialOpen) : undefined
   );
   const [pending, start] = useTransition();
+  const confirm = useConfirm();
 
   const close = useCallback(() => {
     setEditing(undefined);
@@ -112,7 +114,12 @@ export default function ProductsManager({ products, categories, query, initialOp
                       className="btn-ghost p-2 text-red-600"
                       title="Delete"
                       disabled={pending}
-                      onClick={() => confirm(`Delete "${p.name}" permanently?`) && run(() => deleteProduct(p.id), "Product deleted")}
+                      onClick={async () => {
+                        const ok = await confirm(
+                          deleteOptions(`"${p.name}"`, "The product is removed from your store permanently. Past orders keep their details. This can't be undone.")
+                        );
+                        if (ok) run(() => deleteProduct(p.id), "Product deleted");
+                      }}
                     >
                       <Trash2 size={16} />
                     </button>

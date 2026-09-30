@@ -38,7 +38,51 @@ export default async function SuccessPage({ searchParams }: { searchParams: SP }
 
   const paid = order.status !== "pending" && order.status !== "cancelled";
 
-  // Bank transfer awaiting payment: show bank details, QR and proof upload.
+  // Bank transfer (pay-first): the customer has paid and attached proof — we're verifying it.
+  const hasProof = !!(order.payment_reference || order.payment_proof_path);
+  if (order.payment_provider === "bank_transfer" && order.status === "pending" && hasProof) {
+    return (
+      <div className="container-x py-16">
+        <div className="card mx-auto max-w-lg p-8 text-center sm:p-10">
+          <Clock className="mx-auto text-clay-600" size={52} strokeWidth={1.5} />
+          <h1 className="mt-4 text-2xl font-semibold sm:text-3xl">Order received — verifying your payment</h1>
+          <p className="mt-3 text-ink/70">
+            Thanks! Order <strong className="text-ink">#{order.order_number}</strong> is in. We&apos;ll check your transfer and confirm the order as soon as
+            the payment shows in our account.
+          </p>
+          <dl className="mx-auto mt-6 max-w-xs space-y-2 rounded-lg bg-clay-50 p-4 text-left text-sm">
+            <div className="flex justify-between gap-4">
+              <dt className="text-ink/60">Amount paid</dt>
+              <dd className="font-semibold tabular-nums">{formatPrice(order.total, order.currency)}</dd>
+            </div>
+            {order.payment_id && (
+              <div className="flex justify-between gap-4">
+                <dt className="text-ink/60">Payment remark</dt>
+                <dd className="font-mono">{order.payment_id}</dd>
+              </div>
+            )}
+            {order.payment_reference && (
+              <div className="flex justify-between gap-4">
+                <dt className="text-ink/60">Transaction ID</dt>
+                <dd className="break-all text-right font-mono">{order.payment_reference}</dd>
+              </div>
+            )}
+            <div className="flex justify-between gap-4">
+              <dt className="text-ink/60">Screenshot</dt>
+              <dd>{order.payment_proof_path ? "Received" : "Not provided"}</dd>
+            </div>
+          </dl>
+          <p className="mt-5 text-xs text-ink/50">You can follow the status, or add a missing screenshot, under My orders.</p>
+          <div className="mt-6 flex justify-center gap-3">
+            <Link href="/shop" className="btn-outline">Keep shopping</Link>
+            <Link href={`/account/orders/${order.id}`} className="btn-primary">View order</Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Older bank-transfer orders placed before pay-first: show bank details, QR and proof upload.
   if (order.payment_provider === "bank_transfer" && order.status === "pending") {
     const { data: settings } = await db.from("store_settings").select("*").eq("id", 1).single();
     const s = (settings ?? {}) as StoreSettings;
@@ -78,7 +122,7 @@ export default async function SuccessPage({ searchParams }: { searchParams: SP }
         <h1 className="mt-4 text-3xl font-semibold">{paid ? "Thank you for your order!" : "Payment processing"}</h1>
         <p className="mt-3 text-ink/70">
           {paid
-            ? `Order #${order.order_number} is confirmed. A receipt has been sent to ${order.email}.`
+            ? `Order #${order.order_number} is confirmed. You can track it any time under My orders.`
             : `We're waiting for payment confirmation for order #${order.order_number}. Refresh this page in a moment.`}
         </p>
         <p className="mt-6 text-2xl font-semibold">{formatPrice(order.total, order.currency)}</p>

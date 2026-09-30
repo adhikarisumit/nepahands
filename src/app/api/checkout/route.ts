@@ -18,16 +18,42 @@ type Body = {
   email: string;
   address: ShippingAddress;
   notes?: string;
+  /** Bank transfer: code the customer put in the transfer remark, and their bank's transaction ID. */
+  bankCode?: string;
+  bankReference?: string;
 };
 
 const REQUIRED_ADDRESS: (keyof ShippingAddress)[] = ["full_name", "line1", "city", "postal_code", "country"];
+const PROOF_TYPES = ["image/png", "image/jpeg", "image/webp", "image/heic", "application/pdf"];
+// Vercel rejects request bodies over 4.5 MB, so the screenshot sent with the order stays under 4 MB.
+const PROOF_MAX_BYTES = 4 * 1024 * 1024;
 
 export async function POST(req: Request) {
   let body: Body;
+  let proof: File | null = null;
   try {
-    body = await req.json();
+    // Bank-transfer orders arrive as multipart (order JSON + optional payment screenshot).
+    if ((req.headers.get("content-type") ?? "").includes("multipart/form-data")) {
+      const form = await req.formData();
+      body = JSON.parse(String(form.get("payload") ?? "{}"));
+      const f = form.get("proof");
+      if (f instanceof File && f.size > 0) proof = f;
+    } else {
+      body = await req.json();
+    }
   } catch {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
+  }
+
+  // Bank transfer is pay-first: the order is only accepted with proof of payment.
+  const bankReference = body.bankReference?.toString().trim().slice(0, 120) ?? "";
+  const bankCode = /^NH-[A-Z0-9]{6}$/.test(body.bankCode ?? "") ? body.bankCode! : null;
+  if (body.provider === "bank_transfer") {
+    if (!bankReference && !proof) return bad("Please pay first, then add your transaction ID or a payment screenshot");
+    if (proof) {
+      if (proof.size > PROOF_MAX_BYTES) return bad("Screenshot must be under 4 MB");
+      if (!PROOF_TYPES.includes(proof.type)) return bad("Upload the payment proof as an image or PDF");
+    }
   }
 
   if (!body.email || !/^\S+@\S+\.\S+$/.test(body.email)) return bad("Enter a valid email");
@@ -43,6 +69,8 @@ export async function POST(req: Request) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  // Purchases require an account (no guest checkout).
+  if (!user) return bad("Please sign in to place an order", 401);
 
   let quote;
   try {
@@ -63,11 +91,11 @@ export async function POST(req: Request) {
     country: body.address.country.trim(),
   };
 
-  // 1. Create the pending order (service role — guests can check out too)
+  // 1. Create the pending order (service role; owned by the signed-in customer)
   const { data: order, error } = await db
     .from("orders")
     .insert({
-      user_id: user?.id ?? null,
+      user_id: user.id,
       email: body.email.trim().toLowerCase(),
       status: "pending",
       payment_provider: body.provider,
@@ -91,9 +119,28 @@ export async function POST(req: Request) {
     return bad(itemsError.message, 500);
   }
 
-  // 2. Bank transfer: the order waits for manual confirmation by an admin
-  //    (stock and coupon usage are only counted once payment is confirmed).
+  // 2. Bank transfer: the customer has already paid — store their proof with the order.
+  //    It stays pending until an admin checks the bank account and confirms it
+  //    (stock and coupon usage are only counted at that point).
   if (body.provider === "bank_transfer") {
+    const update: Record<string, string> = {};
+    if (bankReference) update.payment_reference = bankReference;
+    if (bankCode) update.payment_id = bankCode; // the remark code shown to the customer at checkout
+    if (proof) {
+      const ext = proof.type === "application/pdf" ? "pdf" : proof.type.split("/")[1];
+      const path = `${order.id}/${Date.now()}.${ext}`;
+      const { error: uploadError } = await db.storage.from("payment-proofs").upload(path, proof, { contentType: proof.type });
+      if (uploadError) {
+        await db.from("orders").delete().eq("id", order.id); // don't keep an order without its proof
+        return bad(`Could not upload your payment proof: ${uploadError.message}`, 500);
+      }
+      update.payment_proof_path = path;
+    }
+    const { error: proofError } = await db.from("orders").update(update).eq("id", order.id);
+    if (proofError) {
+      await db.from("orders").delete().eq("id", order.id);
+      return bad(proofError.message, 500);
+    }
     return NextResponse.json({ provider: "bank_transfer", orderId: order.id });
   }
 

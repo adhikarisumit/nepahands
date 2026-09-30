@@ -4,12 +4,15 @@ import { useTransition } from "react";
 import { CheckCircle2, FileText, Landmark, XCircle } from "lucide-react";
 import toast from "react-hot-toast";
 import { confirmBankPayment, updateOrder } from "../../actions";
+import { useConfirm } from "@/components/ConfirmDialog";
 import type { OrderStatus } from "@/lib/types";
 import { formatPrice } from "@/lib/utils";
 
 type Props = {
   id: string;
   orderNumber: number;
+  /** Remark code shown to the customer at checkout (older orders used ORDER-<number>). */
+  code: string;
   status: OrderStatus;
   total: number;
   currency: string;
@@ -18,8 +21,9 @@ type Props = {
   isPdf: boolean;
 };
 
-export default function BankPaymentReview({ id, orderNumber, status, total, currency, reference, proofUrl, isPdf }: Props) {
+export default function BankPaymentReview({ id, orderNumber, code, status, total, currency, reference, proofUrl, isPdf }: Props) {
   const [pending, start] = useTransition();
+  const confirm = useConfirm();
   const awaiting = status === "pending";
 
   return (
@@ -31,7 +35,7 @@ export default function BankPaymentReview({ id, orderNumber, status, total, curr
       <div className="grid gap-5 p-5 md:grid-cols-[1fr_auto]">
         <dl className="space-y-2 text-sm">
           <div className="flex flex-col sm:flex-row sm:gap-2"><dt className="text-ink/50 sm:w-40">Expected amount</dt><dd className="font-semibold">{formatPrice(total, currency)}</dd></div>
-          <div className="flex flex-col sm:flex-row sm:gap-2"><dt className="text-ink/50 sm:w-40">Expected reference</dt><dd className="font-mono">ORDER-{orderNumber}</dd></div>
+          <div className="flex flex-col sm:flex-row sm:gap-2"><dt className="text-ink/50 sm:w-40">Payment remark to look for</dt><dd className="font-mono font-semibold">{code}</dd></div>
           <div className="flex flex-col sm:flex-row sm:gap-2">
             <dt className="text-ink/50 sm:w-40">Customer&apos;s transaction ID</dt>
             <dd className="font-mono">{reference || <span className="font-sans text-ink/40">Not submitted</span>}</dd>
@@ -57,22 +61,40 @@ export default function BankPaymentReview({ id, orderNumber, status, total, curr
           <button
             className="btn-primary"
             disabled={pending}
-            onClick={() =>
-              confirm(`Confirm you received ${formatPrice(total, currency)} for order #${orderNumber}?`) &&
+            onClick={async () => {
+              const ok = await confirm({
+                title: "Confirm payment received?",
+                message: (
+                  <>
+                    Only confirm once <strong className="text-ink">{formatPrice(total, currency)}</strong> with reference{" "}
+                    <span className="font-mono text-ink">{code}</span> is in your bank account. The order is marked paid and stock is
+                    reduced.
+                  </>
+                ),
+                confirmLabel: "Yes, payment received",
+              });
+              if (!ok) return;
               start(async () => {
                 const res = await confirmBankPayment(id);
                 if (res.error) toast.error(res.error);
                 else toast.success("Payment confirmed — order marked as paid");
-              })
-            }
+              });
+            }}
           >
             <CheckCircle2 size={16} /> Confirm payment received
           </button>
           <button
             className="btn-outline text-red-700"
             disabled={pending}
-            onClick={() => {
-              if (!confirm("Cancel this order? The customer's items will be released.")) return;
+            onClick={async () => {
+              const ok = await confirm({
+                title: `Cancel order #${orderNumber}?`,
+                message: "Use this if you can't find the payment in your bank account. The order is marked cancelled. If the customer did pay, refund them from your bank.",
+                confirmLabel: "Cancel order",
+                cancelLabel: "Keep order",
+                danger: true,
+              });
+              if (!ok) return;
               const fd = new FormData();
               fd.set("status", "cancelled");
               start(async () => {

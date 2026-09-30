@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Check, Star } from "lucide-react";
+import { Check, Clock, Star } from "lucide-react";
+import PaymentProofForm from "@/components/PaymentProofForm";
 import { createClient } from "@/lib/supabase/server";
 import OrderDetail from "@/components/OrderDetail";
 import BankTransferPanel from "@/components/BankTransferPanel";
@@ -26,7 +27,8 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
   const order = data as Order;
   const current = STEPS.findIndex((s) => s.key === order.status);
   const awaitingBank = order.payment_provider === "bank_transfer" && order.status === "pending";
-  const settings = awaitingBank ? await getSettings() : null;
+  const hasProof = !!(order.payment_reference || order.payment_proof_path);
+  const settings = awaitingBank && !hasProof ? await getSettings() : null;
 
   // Once delivered, invite the customer to review each item (reviews require a delivered order).
   let reviewable: { id: string; name: string; slug: string; image: string | null; reviewed: boolean }[] = [];
@@ -52,7 +54,42 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
         <h2 className="mt-1 text-2xl font-semibold">Order #{order.order_number}</h2>
       </div>
 
-      {awaitingBank && settings && (
+      {/* Pay-first bank transfer: already paid with proof attached — waiting for us to verify it. */}
+      {awaitingBank && hasProof && (
+        <div className="card overflow-hidden border-amber-200">
+          <div className="flex items-center gap-3 bg-amber-50 px-5 py-3 text-amber-900">
+            <Clock size={18} />
+            <p className="font-semibold">We&apos;re verifying your payment</p>
+          </div>
+          <div className="space-y-4 p-5">
+            <p className="text-sm text-ink/70">
+              Your order will be confirmed as soon as the transfer shows in our account. You don&apos;t need to do anything else.
+            </p>
+            <dl className="grid gap-2 text-sm sm:grid-cols-3">
+              {order.payment_id && (
+                <div>
+                  <dt className="text-ink/50">Payment remark</dt>
+                  <dd className="font-mono">{order.payment_id}</dd>
+                </div>
+              )}
+              <div>
+                <dt className="text-ink/50">Transaction ID</dt>
+                <dd className="break-all font-mono">{order.payment_reference || "—"}</dd>
+              </div>
+              <div>
+                <dt className="text-ink/50">Screenshot</dt>
+                <dd>{order.payment_proof_path ? "Received" : "Not provided"}</dd>
+              </div>
+            </dl>
+            <div className="border-t border-ink/10 pt-4">
+              <PaymentProofForm orderId={order.id} submittedReference={order.payment_reference ?? null} proofSubmitted={!!order.payment_proof_path} />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Older orders placed before pay-first: still show how to pay. */}
+      {awaitingBank && !hasProof && settings && (
         <BankTransferPanel
           orderId={order.id}
           orderNumber={order.order_number}

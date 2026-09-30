@@ -10,3 +10,8 @@ out
 *.tsbuildinfo
 next-env.d.ts
 .DS_Store
+
+# Vercel CLI project link
+.vercel
+.env*
+!.env.example

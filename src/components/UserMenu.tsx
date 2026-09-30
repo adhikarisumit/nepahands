@@ -1,5 +1,6 @@
 "use client";
 
+import { useCart } from "@/store/cart";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -84,7 +85,7 @@ export default function UserMenu({ isLoggedIn, isAdmin, name, email, storeName }
                 </div>
               )}
               <div className="border-t border-clay-100 p-1.5">
-                <form action="/auth/signout" method="post">
+                <form action="/auth/signout" method="post" onSubmit={() => useCart.getState().clear()}>
                   <button
                     role="menuitem"
                     className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-ink/70 hover:bg-red-50 hover:text-red-700"

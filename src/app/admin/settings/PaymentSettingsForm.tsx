@@ -83,7 +83,7 @@ export default function PaymentSettingsForm({ methods, bank, qrUrl, env }: Props
           onToggle={setBankOn}
           notes={[
             methods.bank_transfer.configured ? "Bank details set" : "Add an account number or QR code below",
-            "Orders stay pending until you confirm payment",
+            "Customers pay first and attach proof; you verify and confirm each order",
           ]}
         />
       </div>

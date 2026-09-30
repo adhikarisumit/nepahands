@@ -67,7 +67,8 @@ export default async function ShippingPolicyPage() {
 
       <h2>8. Contact</h2>
       <p>
-        Questions about shipping? Email <a href={`mailto:${L.contactEmail}`}>{L.contactEmail}</a> with your order number.
+        Questions about shipping? Email <a href={`mailto:${L.contactEmail}`}>{L.contactEmail}</a> or call{" "}
+        <a href={L.phoneHref}>{L.phone}</a> with your order number.
       </p>
     </>
   );

@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { Pencil, Trash2 } from "lucide-react";
 import toast from "react-hot-toast";
 import { deleteCoupon, saveCoupon } from "../actions";
+import { deleteOptions, useConfirm } from "@/components/ConfirmDialog";
 import type { Coupon } from "@/lib/types";
 import { formatDate, formatPrice } from "@/lib/utils";
 
@@ -11,6 +12,7 @@ export default function CouponManager({ coupons }: { coupons: Coupon[] }) {
   const [editing, setEditing] = useState<Coupon | null>(null);
   const [formKey, setFormKey] = useState(0);
   const [pending, start] = useTransition();
+  const confirm = useConfirm();
   const reset = () => {
     setEditing(null);
     setFormKey((k) => k + 1);
@@ -44,14 +46,18 @@ export default function CouponManager({ coupons }: { coupons: Coupon[] }) {
                       <button className="btn-ghost p-2" onClick={() => { setEditing(c); setFormKey((k) => k + 1); }}><Pencil size={16} /></button>
                       <button
                         className="btn-ghost p-2 text-red-600"
-                        onClick={() =>
-                          confirm(`Delete coupon ${c.code}?`) &&
+                        disabled={pending}
+                        onClick={async () => {
+                          const ok = await confirm(
+                            deleteOptions(`coupon ${c.code}`, "Customers will no longer be able to use this code. Orders that already used it aren't affected.")
+                          );
+                          if (!ok) return;
                           start(async () => {
                             const res = await deleteCoupon(c.id);
                             if (res.error) toast.error(res.error);
-                            else toast.success("Deleted");
-                          })
-                        }
+                            else toast.success("Coupon deleted");
+                          });
+                        }}
                       >
                         <Trash2 size={16} />
                       </button>

@@ -5,6 +5,7 @@ import { FolderTree, Pencil, Plus, Trash2 } from "lucide-react";
 import toast from "react-hot-toast";
 import Modal from "@/components/Modal";
 import ImageUpload from "@/components/ImageUpload";
+import { deleteOptions, useConfirm } from "@/components/ConfirmDialog";
 import { deleteCategory, saveCategory } from "../actions";
 import type { Category } from "@/lib/types";
 import { PLACEHOLDER_IMG } from "@/lib/utils";
@@ -13,6 +14,7 @@ export default function CategoryManager({ categories, counts }: { categories: Ca
   // undefined = closed, null = creating, Category = editing
   const [editing, setEditing] = useState<Category | null | undefined>(undefined);
   const [pending, start] = useTransition();
+  const confirm = useConfirm();
   const close = () => setEditing(undefined);
 
   return (
@@ -52,14 +54,23 @@ export default function CategoryManager({ categories, counts }: { categories: Ca
                       className="btn-ghost p-2 text-red-600"
                       title="Delete"
                       disabled={pending}
-                      onClick={() =>
-                        confirm(`Delete "${c.name}"? Its products will be left uncategorized.`) &&
+                      onClick={async () => {
+                        const n = counts[c.id] ?? 0;
+                        const ok = await confirm(
+                          deleteOptions(
+                            `the "${c.name}" category`,
+                            n > 0
+                              ? `Its ${n} product${n === 1 ? "" : "s"} won't be deleted — they'll just have no category. This can't be undone.`
+                              : "This can't be undone."
+                          )
+                        );
+                        if (!ok) return;
                         start(async () => {
                           const res = await deleteCategory(c.id);
                           if (res.error) toast.error(res.error);
                           else toast.success("Category deleted");
-                        })
-                      }
+                        });
+                      }}
                     >
                       <Trash2 size={16} />
                     </button>

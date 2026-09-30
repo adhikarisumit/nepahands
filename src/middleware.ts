@@ -27,7 +27,8 @@ export async function middleware(request: NextRequest) {
   const user = data?.claims?.sub ?? null;
 
   const path = request.nextUrl.pathname;
-  const needsAuth = path.startsWith("/admin") || path.startsWith("/account") || path.startsWith("/wishlist");
+  // Shopping requires an account: cart and checkout are sign-in only.
+  const needsAuth = ["/admin", "/account", "/wishlist", "/cart", "/checkout"].some((p) => path === p || path.startsWith(`${p}/`));
   if (needsAuth && !user) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";

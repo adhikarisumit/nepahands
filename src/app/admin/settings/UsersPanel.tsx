@@ -4,6 +4,7 @@ import { useRef, useState, useTransition } from "react";
 import { Check, Copy, RefreshCw, ShieldCheck, UserPlus } from "lucide-react";
 import toast from "react-hot-toast";
 import { createUser, setRole } from "../actions";
+import { useConfirm } from "@/components/ConfirmDialog";
 import { formatDate } from "@/lib/utils";
 
 type AdminRow = { id: string; email: string | null; full_name: string | null; created_at: string };
@@ -151,6 +152,7 @@ export default function UsersPanel({ admins, currentUserId }: { admins: AdminRow
 
 function AdminItem({ admin, isSelf }: { admin: AdminRow; isSelf: boolean }) {
   const [pending, start] = useTransition();
+  const confirm = useConfirm();
   return (
     <li className="flex flex-wrap items-center gap-3 px-6 py-3">
       <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-clay-100 text-xs font-semibold text-clay-800">
@@ -168,14 +170,20 @@ function AdminItem({ admin, isSelf }: { admin: AdminRow; isSelf: boolean }) {
         <button
           className="btn-ghost px-3 py-1.5 text-xs text-red-600"
           disabled={pending}
-          onClick={() =>
-            confirm(`Remove admin access for ${admin.email}? They'll keep their account as a customer.`) &&
+          onClick={async () => {
+            const ok = await confirm({
+              title: "Remove admin access?",
+              message: `${admin.full_name || admin.email} will lose access to the admin panel. Their account stays active as a customer.`,
+              confirmLabel: "Remove admin",
+              danger: true,
+            });
+            if (!ok) return;
             start(async () => {
               const res = await setRole(admin.id, "customer");
               if (res.error) toast.error(res.error);
               else toast.success("Admin access removed");
-            })
-          }
+            });
+          }}
         >
           Remove admin
         </button>

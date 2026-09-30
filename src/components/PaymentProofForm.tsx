@@ -36,8 +36,10 @@ export default function PaymentProofForm({ orderId, submittedReference, proofSub
     <form onSubmit={submit} className="space-y-3">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h3 className="font-semibold">Already paid?</h3>
-          <p className="text-sm text-ink/60">Share your transaction ID or a screenshot so we can confirm faster.</p>
+          <h3 className="font-semibold">{done ? "Update your payment proof" : "Already paid?"}</h3>
+          <p className="text-sm text-ink/60">
+            {done ? "Add a missing screenshot or correct the transaction ID." : "Share your transaction ID or a screenshot so we can confirm faster."}
+          </p>
         </div>
         {done && (
           <span className="badge shrink-0 gap-1 bg-green-100 text-green-800">

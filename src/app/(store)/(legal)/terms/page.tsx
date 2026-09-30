@@ -18,13 +18,14 @@ export default function TermsPage() {
 
       <h2>1. Who we are</h2>
       <p>
-        The Store is operated by {L.businessName}, {L.address}. You can contact us at <a href={`mailto:${L.contactEmail}`}>{L.contactEmail}</a>.
+        The Store is operated by {L.businessName}, {L.address}. You can contact us at <a href={`mailto:${L.contactEmail}`}>{L.contactEmail}</a> or{" "}
+        <a href={L.phoneHref}>{L.phone}</a>.
       </p>
 
       <h2>2. Eligibility and accounts</h2>
       <ul>
         <li>You must be at least 18 years old, or have the permission of a parent or guardian, to make a purchase.</li>
-        <li>You can check out as a guest or create an account. You are responsible for keeping your password confidential and for all activity under your account.</li>
+        <li>You need an account to add items to your cart and place an order. You are responsible for keeping your password confidential and for all activity under your account.</li>
         <li>Please give us accurate, current information and keep it up to date. We may suspend accounts that are used fraudulently or in breach of these Terms.</li>
       </ul>
 
@@ -61,9 +62,10 @@ export default function TermsPage() {
           <a href="https://www.paddle.com/legal/checkout-buyer-terms" target="_blank" rel="noopener noreferrer">buyer terms</a> also apply.
         </li>
         <li>
-          <strong>Bank transfer / QR payments:</strong> your order stays &quot;pending&quot; until we receive the full amount, and items are not
-          set aside for you until then — if a piece sells out before your payment arrives, we will refund you in full. Please use your order number
-          as the payment reference. We may cancel pending orders that are not paid within 7 days.
+          <strong>Bank transfer / QR payments:</strong> you pay first, using the bank details or QR code shown at checkout, and then place your
+          order with your transaction ID or a screenshot of the payment. Please add the payment code shown at checkout as the remark on your
+          transfer. Your order stays &quot;pending&quot; until we have verified the payment in our account. If we can&apos;t match your payment, or a
+          piece sells out before it is verified, we will contact you and refund anything you paid.
         </li>
         <li>Discount codes must be entered at checkout, cannot be exchanged for cash and may have conditions such as a minimum spend or expiry date.</li>
       </ul>
@@ -117,7 +119,8 @@ export default function TermsPage() {
 
       <h2>14. Contact</h2>
       <p>
-        Questions about these Terms? Email us at <a href={`mailto:${L.contactEmail}`}>{L.contactEmail}</a>.
+        Questions about these Terms? Email us at <a href={`mailto:${L.contactEmail}`}>{L.contactEmail}</a> or call{" "}
+        <a href={L.phoneHref}>{L.phone}</a>.
       </p>
     </>
   );

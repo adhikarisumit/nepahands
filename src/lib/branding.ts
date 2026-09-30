@@ -14,6 +14,11 @@ export type SocialLinks = {
 
 export const BRAND = {
   name: "Nepahands",
+  /** Default contact details (Admin → Settings → Contact email overrides the email if set). */
+  contact_email: "nepahands@gmail.com",
+  /** E.164 format for tel: links, plus a readable version for display. */
+  phone: "+61478544668",
+  phone_display: "+61 478 544 668",
   tagline: "Handmade felt from Nepal",
   /** Emblem (the "N" mark) shown next to the store name in the header, menu and admin. Empty = text only. */
   logo_url: "/logo-mark.png",

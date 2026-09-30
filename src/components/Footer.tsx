@@ -1,6 +1,7 @@
 import Link from "next/link";
 import BrandLogo from "./BrandLogo";
-import { SOCIAL_LABELS, type SocialLinks } from "@/lib/branding";
+import { Mail, Phone } from "lucide-react";
+import { BRAND, SOCIAL_LABELS, type SocialLinks } from "@/lib/branding";
 import { LEGAL_PAGES } from "@/lib/legal";
 
 type Props = {
@@ -61,11 +62,18 @@ export default function Footer({ storeName, logoUrl, text, social, contactEmail 
         </div>
         <div>
           <p className="mb-3 text-sm font-semibold">Get in touch</p>
-          {contactEmail ? (
-            <a href={`mailto:${contactEmail}`} className="text-sm text-ink/70 hover:text-clay-700">{contactEmail}</a>
-          ) : (
-            <p className="text-sm text-ink/70">hello@example.com</p>
-          )}
+          <ul className="space-y-2 text-sm text-ink/70">
+            <li>
+              <a href={`mailto:${contactEmail || BRAND.contact_email}`} className="flex items-center gap-2 hover:text-clay-700">
+                <Mail size={15} className="shrink-0 text-ink/40" /> {contactEmail || BRAND.contact_email}
+              </a>
+            </li>
+            <li>
+              <a href={`tel:${BRAND.phone}`} className="flex items-center gap-2 hover:text-clay-700">
+                <Phone size={15} className="shrink-0 text-ink/40" /> {BRAND.phone_display}
+              </a>
+            </li>
+          </ul>
           <p className="mt-4 text-xs text-ink/50">Secure payments · Cards · Bank transfer</p>
         </div>
       </div>

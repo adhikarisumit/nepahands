@@ -2,15 +2,18 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { Minus, Plus } from "lucide-react";
 import toast from "react-hot-toast";
 import { useCart } from "@/store/cart";
 import type { CartItem } from "@/lib/types";
 import { formatPrice } from "@/lib/utils";
 
-export default function AddToCart({ product }: { product: Omit<CartItem, "quantity"> }) {
+export default function AddToCart({ product, isLoggedIn }: { product: Omit<CartItem, "quantity">; isLoggedIn: boolean }) {
   const [qty, setQty] = useState(1);
   const add = useCart((s) => s.add);
+  const router = useRouter();
+  const pathname = usePathname();
   const soldOut = product.stock <= 0;
   const buttonRef = useRef<HTMLButtonElement>(null);
   const [showSticky, setShowSticky] = useState(false);
@@ -25,6 +28,12 @@ export default function AddToCart({ product }: { product: Omit<CartItem, "quanti
   }, [soldOut]);
 
   const addToCart = () => {
+    // Shopping requires an account — send guests to sign in, then back to this product.
+    if (!isLoggedIn) {
+      toast("Please sign in to add items to your cart", { icon: "🔒" });
+      router.push(`/login?next=${encodeURIComponent(pathname)}`);
+      return;
+    }
     add(product, qty);
     toast.success(
       <span>

@@ -39,6 +39,7 @@ export default async function AdminOrderPage({ params }: { params: Promise<{ id:
         <BankPaymentReview
           id={order.id}
           orderNumber={order.order_number}
+          code={order.payment_id || `ORDER-${order.order_number}`}
           status={order.status}
           total={Number(order.total)}
           currency={order.currency}

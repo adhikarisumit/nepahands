@@ -10,7 +10,8 @@ import { useCart } from "@/store/cart";
 import OrderSummary from "@/components/OrderSummary";
 import { useQuote } from "@/components/useQuote";
 import { cn, formatPrice, PLACEHOLDER_IMG } from "@/lib/utils";
-import type { PaymentProvider, ShippingAddress } from "@/lib/types";
+import type { BankDetails, PaymentProvider, ShippingAddress } from "@/lib/types";
+import BankPayFirst, { type BankProof } from "./BankPayFirst";
 
 type Props = {
   defaultEmail: string;
@@ -19,7 +20,16 @@ type Props = {
   stripeEnabled: boolean;
   paddleEnabled: boolean;
   bankEnabled: boolean;
+  bank: BankDetails;
+  bankQrUrl: string | null;
 };
+
+/** Short, unambiguous code for the transfer remark (no 0/O or 1/I), e.g. "NH-7K2QXM". */
+function makeBankCode() {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  const bytes = crypto.getRandomValues(new Uint8Array(6));
+  return "NH-" + Array.from(bytes, (b) => chars[b % chars.length]).join("");
+}
 
 const COUNTRIES = [
   ["US", "United States"], ["CA", "Canada"], ["GB", "United Kingdom"], ["AU", "Australia"], ["IN", "India"],
@@ -27,7 +37,7 @@ const COUNTRIES = [
   ["JP", "Japan"], ["SG", "Singapore"], ["AE", "United Arab Emirates"], ["NZ", "New Zealand"],
 ];
 
-export default function CheckoutForm({ defaultEmail, defaultAddress, isLoggedIn, stripeEnabled, paddleEnabled, bankEnabled }: Props) {
+export default function CheckoutForm({ defaultEmail, defaultAddress, isLoggedIn, stripeEnabled, paddleEnabled, bankEnabled, bank, bankQrUrl }: Props) {
   const router = useRouter();
   const { items, coupon, clear } = useCart();
   const [mounted, setMounted] = useState(false);
@@ -38,6 +48,11 @@ export default function CheckoutForm({ defaultEmail, defaultAddress, isLoggedIn,
   const [provider, setProvider] = useState<PaymentProvider>(stripeEnabled ? "stripe" : paddleEnabled ? "paddle" : "bank_transfer");
   const [submitting, setSubmitting] = useState(false);
   const [paddle, setPaddle] = useState<Paddle | undefined>();
+  // Bank transfer is pay-first: the customer pays, then attaches proof before placing the order.
+  const [bankCode] = useState(makeBankCode);
+  const [proof, setProof] = useState<BankProof>({ reference: "", file: null, paid: false });
+  const isBank = provider === "bank_transfer";
+  const bankReady = !!(proof.reference.trim() || proof.file) && proof.paid;
 
   useEffect(() => setMounted(true), []);
   const { quote, loading } = useQuote(mounted ? items : [], coupon);
@@ -70,20 +85,32 @@ export default function CheckoutForm({ defaultEmail, defaultAddress, isLoggedIn,
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isBank) {
+      if (!proof.reference.trim() && !proof.file) return void toast.error("Add your transaction ID or a payment screenshot first");
+      if (!proof.paid) return void toast.error("Please confirm that you've completed the payment");
+      if (proof.file && proof.file.size > 4 * 1024 * 1024) return void toast.error("Screenshot must be under 4 MB");
+    }
     setSubmitting(true);
     try {
-      const res = await fetch("/api/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          provider,
-          email,
-          address,
-          notes,
-          coupon: quote?.couponError ? null : coupon,
-          items: items.map((i) => ({ id: i.id, quantity: i.quantity })),
-        }),
-      });
+      const payload = {
+        provider,
+        email,
+        address,
+        notes,
+        coupon: quote?.couponError ? null : coupon,
+        items: items.map((i) => ({ id: i.id, quantity: i.quantity })),
+        ...(isBank ? { bankCode, bankReference: proof.reference.trim() } : {}),
+      };
+      let res: Response;
+      if (isBank) {
+        // Order details + payment screenshot travel together, so an order never exists without its proof.
+        const fd = new FormData();
+        fd.set("payload", JSON.stringify(payload));
+        if (proof.file) fd.set("proof", proof.file);
+        res = await fetch("/api/checkout", { method: "POST", body: fd });
+      } else {
+        res = await fetch("/api/checkout", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      }
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Checkout failed");
 
@@ -92,7 +119,7 @@ export default function CheckoutForm({ defaultEmail, defaultAddress, isLoggedIn,
         return;
       }
       if (data.provider === "bank_transfer") {
-        // The order is placed; payment instructions are shown on the next page.
+        // Paid and placed — the next page confirms we're verifying the payment.
         clear();
         router.push(`/checkout/success?order=${data.orderId}`);
         return;
@@ -162,13 +189,18 @@ export default function CheckoutForm({ defaultEmail, defaultAddress, isLoggedIn,
               <PayOption active={provider === "paddle"} onClick={() => setProvider("paddle")} icon={<Wallet size={20} />} title="Paddle" text="Cards, PayPal & local methods. Tax calculated at payment." />
             )}
             {bankEnabled && (
-              <PayOption active={provider === "bank_transfer"} onClick={() => setProvider("bank_transfer")} icon={<Landmark size={20} />} title="Bank transfer / QR" text="Pay by bank transfer or scan our QR code. Order ships once payment is confirmed." />
+              <PayOption active={provider === "bank_transfer"} onClick={() => setProvider("bank_transfer")} icon={<Landmark size={20} />} title="Bank transfer / QR" text="Pay by bank transfer or scan our QR code, then place your order with proof of payment." />
             )}
           </div>
-          {provider === "bank_transfer" && (
-            <p className="mt-4 rounded-lg bg-clay-50 p-3 text-sm text-ink/70">
-              After placing your order you&apos;ll see our bank details and QR code, with your order number to use as the payment reference.
-            </p>
+          {isBank && (
+            <BankPayFirst
+              bank={bank}
+              qrUrl={bankQrUrl}
+              amount={quote ? formatPrice(quote.total) : "—"}
+              code={bankCode}
+              proof={proof}
+              onChange={setProof}
+            />
           )}
         </section>
       </div>
@@ -190,12 +222,17 @@ export default function CheckoutForm({ defaultEmail, defaultAddress, isLoggedIn,
           </ul>
         </div>
         <OrderSummary quote={quote} loading={loading} />
-        <button className="btn-primary w-full py-3" disabled={submitting || loading || !!quote?.error || !anyMethod}>
+        <button className="btn-primary w-full py-3" disabled={submitting || loading || !!quote?.error || !anyMethod || (isBank && !bankReady)}>
           <Lock size={16} />{" "}
           {submitting
-            ? provider === "bank_transfer" ? "Placing order…" : "Redirecting to payment…"
-            : provider === "bank_transfer" ? `Place order · ${quote ? formatPrice(quote.total) : ""}` : `Pay ${quote ? formatPrice(quote.total) : ""}`}
+            ? isBank ? "Placing order…" : "Redirecting to payment…"
+            : isBank ? "I've paid — place order" : `Pay ${quote ? formatPrice(quote.total) : ""}`}
         </button>
+        {isBank && !bankReady && (
+          <p className="text-center text-xs text-amber-700">
+            Pay {quote ? formatPrice(quote.total) : "the total"} first, then add your proof of payment to place the order.
+          </p>
+        )}
         <p className="text-center text-xs text-ink/50">
           By placing your order you agree to our{" "}
           <Link href="/terms" target="_blank" className="underline hover:text-clay-700">Terms of Service</Link>,{" "}

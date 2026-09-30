@@ -22,7 +22,8 @@ export default function RefundPolicyPage() {
       <h2>1. Cancelling an order</h2>
       <p>
         You can cancel an order free of charge until it has been shipped. Email <a href={`mailto:${L.contactEmail}`}>{L.contactEmail}</a> with your
-        order number as soon as possible. If you placed a bank-transfer order and no longer want it, just let us know — nothing is charged until you pay.
+        order number as soon as possible. Bank-transfer orders are paid before they are placed, so if you cancel one we refund your transfer to the
+        account it came from.
       </p>
 
       <h2>2. Returns</h2>
@@ -88,7 +89,8 @@ export default function RefundPolicyPage() {
 
       <h2>9. Contact</h2>
       <p>
-        For returns and refunds, email <a href={`mailto:${L.contactEmail}`}>{L.contactEmail}</a> and include your order number.
+        For returns and refunds, email <a href={`mailto:${L.contactEmail}`}>{L.contactEmail}</a> or call{" "}
+        <a href={L.phoneHref}>{L.phone}</a>, and include your order number.
       </p>
     </>
   );

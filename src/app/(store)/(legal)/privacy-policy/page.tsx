@@ -98,6 +98,8 @@ export default function PrivacyPage() {
         {L.businessName}, {L.address}
         <br />
         Email: <a href={`mailto:${L.contactEmail}`}>{L.contactEmail}</a>
+        <br />
+        Phone: <a href={L.phoneHref}>{L.phone}</a>
       </p>
     </>
   );

@@ -131,6 +131,7 @@ export default async function ProductPage({ params }: { params: Params }) {
                   image: product.images?.[0] ?? null,
                   stock: product.stock,
                 }}
+                isLoggedIn={!!user}
               />
             </div>
             <div className="mt-3">

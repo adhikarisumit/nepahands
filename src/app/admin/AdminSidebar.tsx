@@ -1,5 +1,6 @@
 "use client";
 
+import { useCart } from "@/store/cart";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
@@ -66,7 +67,7 @@ export default function AdminSidebar({ email, storeName, logoUrl }: { email: str
             <Store size={16} /> View store <ExternalLink size={12} className="text-ink/40" />
           </a>
           <p className="mt-3 truncate text-xs text-ink/40">{email}</p>
-          <form action="/auth/signout" method="post">
+          <form action="/auth/signout" method="post" onSubmit={() => useCart.getState().clear()}>
             <button className="mt-1 text-xs text-clay-700 hover:underline">Sign out</button>
           </form>
         </div>

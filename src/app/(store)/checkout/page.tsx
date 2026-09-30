@@ -34,10 +34,12 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
       <CheckoutForm
         defaultEmail={user?.email ?? ""}
         isLoggedIn={!!user}
-        defaultAddress={lastAddress ?? { full_name: fullName, phone, line1: "", city: "", postal_code: "", country: "US" }}
+        defaultAddress={lastAddress ?? { full_name: fullName, phone, line1: "", city: "", postal_code: "", country: "AU" }}
         stripeEnabled={methods.stripe.available}
         paddleEnabled={methods.paddle.available}
         bankEnabled={methods.bank_transfer.available}
+        bank={settings.bank_details ?? {}}
+        bankQrUrl={settings.bank_qr_url ?? null}
       />
     </div>
   );

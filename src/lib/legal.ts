@@ -9,9 +9,12 @@ export const LEGAL = {
   /** Registered business / trading name shown in the policies. */
   businessName: BRAND.name,
   /** Public website address. */
-  website: "https://www.yourstore.com",
+  website: "https://nepahands.vercel.app",
   /** Where customers send legal, privacy and refund requests. */
-  contactEmail: "support@yourstore.com",
+  contactEmail: BRAND.contact_email,
+  /** Customer phone number (display format) and tel: link value. */
+  phone: BRAND.phone_display,
+  phoneHref: `tel:${BRAND.phone}`,
   /** Registered business address (required by most consumer and privacy laws). */
   address: "[Your registered business address]",
   /** Country / state whose laws govern the Terms. */

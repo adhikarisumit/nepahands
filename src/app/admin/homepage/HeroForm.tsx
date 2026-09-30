@@ -5,6 +5,7 @@ import { ArrowRight, ExternalLink, Images, RotateCcw } from "lucide-react";
 import toast from "react-hot-toast";
 import ImageUpload from "@/components/ImageUpload";
 import Modal from "@/components/Modal";
+import { useConfirm } from "@/components/ConfirmDialog";
 import { saveHero } from "../actions";
 import type { Hero } from "@/lib/homepage";
 import { cn } from "@/lib/utils";
@@ -17,6 +18,7 @@ export default function HeroForm({ initial, defaults, photos, links, customised 
   const [picking, setPicking] = useState<"image_1" | "image_2" | null>(null);
   const [pending, start] = useTransition();
   const [dirty, setDirty] = useState(false);
+  const confirm = useConfirm();
 
   const set = <K extends keyof Hero>(k: K, v: Hero[K]) => {
     setHero((h) => ({ ...h, [k]: v }));
@@ -34,8 +36,13 @@ export default function HeroForm({ initial, defaults, photos, links, customised 
     });
   };
 
-  const reset = () => {
-    if (!confirm("Reset the hero to the default text and photos?")) return;
+  const reset = async () => {
+    const ok = await confirm({
+      title: "Reset the homepage hero?",
+      message: "Your headline, buttons and featured photos go back to the default content. Your uploaded photos stay in storage.",
+      confirmLabel: "Reset",
+    });
+    if (!ok) return;
     const fd = new FormData();
     fd.set("reset", "1");
     start(async () => {

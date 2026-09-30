@@ -33,7 +33,7 @@ export default function SettingsForm({ settings }: { settings: StoreSettings }) 
         <div className="grid gap-4 md:grid-cols-2">
           <div>
             <label className="label">Contact email</label>
-            <input name="contact_email" type="email" className="input" defaultValue={settings.contact_email ?? ""} placeholder="hello@yourstore.com" />
+            <input name="contact_email" type="email" className="input" defaultValue={settings.contact_email ?? ""} placeholder="nepahands@gmail.com" />
           </div>
           <div>
             <label className="label">Announcement bar</label>

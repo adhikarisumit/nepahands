@@ -1,5 +1,6 @@
 "use client";
 
+import { useCart } from "@/store/cart";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -124,7 +125,7 @@ export default function MobileDrawer({ open, onClose, storeName, logoUrl, isLogg
                   <ADMIN_LINK.icon size={18} className="text-ink/40" /> {ADMIN_LINK.label}
                 </Link>
               )}
-              <form action="/auth/signout" method="post">
+              <form action="/auth/signout" method="post" onSubmit={() => useCart.getState().clear()}>
                 <button className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-[15px] text-red-600 hover:bg-red-50" tabIndex={open ? 0 : -1}>
                   <LogOut size={18} /> Sign out
                 </button>
