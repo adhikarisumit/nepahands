@@ -1,6 +1,6 @@
 "use client";
 
-import { Upload, X } from "lucide-react";
+import { QrCode, Upload, X } from "lucide-react";
 import CopyButton from "@/components/CopyButton";
 import type { BankDetails } from "@/lib/types";
 
@@ -17,10 +17,12 @@ type Props = {
   code: string;
   proof: BankProof;
   onChange: (p: BankProof) => void;
+  /** Opens the full-size QR code popup. */
+  onShowQr: () => void;
 };
 
 /** Pay-first bank transfer: pay with the details shown, then attach proof before placing the order. */
-export default function BankPayFirst({ bank, qrUrl, amount, conversion, code, proof, onChange }: Props) {
+export default function BankPayFirst({ bank, qrUrl, amount, conversion, code, proof, onChange, onShowQr }: Props) {
   const rows: [string, string | undefined][] = [
     ["Bank", bank.bank_name],
     ["Account name", bank.account_name],
@@ -71,12 +73,17 @@ export default function BankPayFirst({ bank, qrUrl, amount, conversion, code, pr
           </div>
 
           {qrUrl && (
-            <div className="flex flex-col items-center gap-2">
+            <button
+              type="button"
+              onClick={onShowQr}
+              className="group flex flex-col items-center gap-2 self-start rounded-lg border border-ink/10 bg-white p-3 transition hover:border-clay-400"
+            >
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={qrUrl} alt="Payment QR code" className="h-48 w-48 rounded-lg border border-ink/10 bg-white object-contain p-2" />
-              <p className="text-xs text-ink/50">Scan to pay</p>
-              <a href={qrUrl} target="_blank" rel="noreferrer" className="text-xs text-clay-700 underline">Open QR image</a>
-            </div>
+              <img src={qrUrl} alt="Payment QR code" className="h-28 w-28 object-contain" />
+              <span className="flex items-center gap-1.5 text-xs font-medium text-clay-700 group-hover:underline">
+                <QrCode size={14} /> Show QR code
+              </span>
+            </button>
           )}
         </div>
       </div>

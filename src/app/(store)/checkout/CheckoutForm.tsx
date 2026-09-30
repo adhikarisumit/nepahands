@@ -1,13 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Landmark, CreditCard, Lock, Wallet } from "lucide-react";
 import toast from "react-hot-toast";
 import { initializePaddle, type Paddle } from "@paddle/paddle-js";
 import { useCart } from "@/store/cart";
 import OrderSummary from "@/components/OrderSummary";
+import Modal from "@/components/Modal";
+import CopyButton from "@/components/CopyButton";
 import { useQuote } from "@/components/useQuote";
 import { cn, CURRENCY, formatPrice, PLACEHOLDER_IMG } from "@/lib/utils";
 import type { BankDetails, PaymentProvider, ShippingAddress } from "@/lib/types";
@@ -58,6 +60,13 @@ export default function CheckoutForm({ defaultEmail, defaultAddress, isLoggedIn,
   const [proof, setProof] = useState<BankProof>({ reference: "", file: null, paid: false });
   const isBank = provider === "bank_transfer";
   const bankReady = !!(proof.reference.trim() || proof.file) && proof.paid && !bankFxError;
+  // Choosing bank transfer pops the QR code up full size; it can be reopened from the payment panel.
+  const [qrOpen, setQrOpen] = useState(false);
+  const closeQr = useCallback(() => setQrOpen(false), []);
+  const chooseBank = () => {
+    setProvider("bank_transfer");
+    if (bankQrUrl && !bankFxError) setQrOpen(true);
+  };
 
   useEffect(() => setMounted(true), []);
   const { quote, loading } = useQuote(mounted ? items : [], coupon);
@@ -203,7 +212,7 @@ export default function CheckoutForm({ defaultEmail, defaultAddress, isLoggedIn,
               <PayOption active={provider === "paddle"} onClick={() => setProvider("paddle")} icon={<Wallet size={20} />} title="Paddle" text="Cards, PayPal & local methods. Tax calculated at payment." />
             )}
             {bankEnabled && (
-              <PayOption active={provider === "bank_transfer"} onClick={() => setProvider("bank_transfer")} icon={<Landmark size={20} />} title="Bank transfer / QR" text="Pay by bank transfer or scan our QR code, then place your order with proof of payment." />
+              <PayOption active={provider === "bank_transfer"} onClick={chooseBank} icon={<Landmark size={20} />} title="Bank transfer / QR" text="Pay by bank transfer or scan our QR code, then place your order with proof of payment." />
             )}
           </div>
           {isBank && (
@@ -215,7 +224,33 @@ export default function CheckoutForm({ defaultEmail, defaultAddress, isLoggedIn,
               code={bankCode}
               proof={proof}
               onChange={setProof}
+              onShowQr={() => setQrOpen(true)}
             />
+          )}
+          {bankQrUrl && (
+            <Modal open={qrOpen && isBank} onClose={closeQr} title="Scan to pay">
+              <div className="flex flex-col items-center text-center">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={bankQrUrl} alt="Payment QR code" className="w-full max-w-[300px] rounded-lg border border-ink/10 bg-white object-contain p-3" />
+                <p className="mt-5 text-xs uppercase tracking-wide text-ink/50">Amount to pay</p>
+                <p className={cn("mt-1 text-3xl font-bold tabular-nums transition-opacity", loading && "opacity-40")}>{bankAmount}</p>
+                {bankConversion && <p className="mt-1 text-xs tabular-nums text-ink/50">{bankConversion}</p>}
+                <div className="mt-5 w-full rounded-lg border border-dashed border-clay-300 bg-clay-50 px-4 py-3">
+                  <p className="text-xs uppercase tracking-wide text-ink/50">Payment remark / reference</p>
+                  <div className="mt-1 flex items-center justify-center gap-2">
+                    <p className="font-mono text-lg font-bold">{bankCode}</p>
+                    <CopyButton value={bankCode} />
+                  </div>
+                </div>
+                <p className="mt-4 text-xs text-ink/60">
+                  Scan with your banking or wallet app, enter the exact amount and add the remark. Then close this and add your proof of payment.
+                </p>
+                <div className="mt-5 flex w-full flex-col gap-2 sm:flex-row">
+                  <a href={bankQrUrl} target="_blank" rel="noreferrer" className="btn-outline flex-1">Open QR image</a>
+                  <button type="button" className="btn-primary flex-1" onClick={closeQr}>Done</button>
+                </div>
+              </div>
+            </Modal>
           )}
         </section>
       </div>
@@ -236,7 +271,15 @@ export default function CheckoutForm({ defaultEmail, defaultAddress, isLoggedIn,
             ))}
           </ul>
         </div>
-        <OrderSummary quote={quote} loading={loading} />
+        <OrderSummary
+          quote={quote}
+          loading={loading}
+          converted={
+            isBank && bankFx && quote
+              ? { amount: bankAmount, note: `by bank transfer · 1 ${CURRENCY} = ${formatRate(bankFx.rate)} ${bankFx.currency}` }
+              : null
+          }
+        />
         <button className="btn-primary w-full py-3" disabled={submitting || loading || !!quote?.error || !anyMethod || (isBank && !bankReady)}>
           <Lock size={16} />{" "}
           {submitting

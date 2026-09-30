@@ -11,9 +11,11 @@ type Props = {
   loading: boolean;
   /** Rendered under the total, e.g. the checkout button and trust notes. */
   footer?: React.ReactNode;
+  /** The total in another currency when the customer pays that way (e.g. bank transfer in NPR). */
+  converted?: { amount: string; note: string } | null;
 };
 
-export default function OrderSummary({ quote, loading, footer }: Props) {
+export default function OrderSummary({ quote, loading, footer, converted }: Props) {
   const { items, coupon, setCoupon } = useCart();
   const [code, setCode] = useState("");
   const [showCode, setShowCode] = useState(false);
@@ -84,6 +86,15 @@ export default function OrderSummary({ quote, loading, footer }: Props) {
           {formatPrice(quote?.total ?? subtotal)}
         </span>
       </div>
+      {converted && quote && (
+        <div className={`mt-3 rounded-md bg-clay-50 px-3 py-2.5 transition-opacity ${loading ? "opacity-40" : ""}`}>
+          <div className="flex items-baseline justify-between gap-3">
+            <span className="text-sm font-medium">You pay</span>
+            <span className="text-lg font-semibold tabular-nums">{converted.amount}</span>
+          </div>
+          <p className="mt-0.5 text-right text-xs text-ink/50">{converted.note}</p>
+        </div>
+      )}
       {quote && !quote.tax && <p className="mt-1 text-right text-xs text-ink/50">Taxes, if any, are shown at payment.</p>}
       {quote?.error && <p className="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{quote.error}</p>}
 
