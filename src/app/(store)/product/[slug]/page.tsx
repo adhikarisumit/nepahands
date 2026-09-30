@@ -6,6 +6,7 @@ import { getProductBySlug, getRelatedProducts } from "@/lib/catalog";
 import { getSettings } from "@/lib/settings";
 import { LEGAL } from "@/lib/legal";
 import { hasReceivedProduct } from "@/lib/reviews";
+import { productNeedsShipping, shippingRule } from "@/lib/shipping";
 import ProductCard from "@/components/ProductCard";
 import Gallery from "./Gallery";
 import AddToCart from "./AddToCart";
@@ -62,7 +63,9 @@ export default async function ProductPage({ params }: { params: Params }) {
   const compareAt = Number(product.compare_at_price ?? 0);
   const onSale = compareAt > price;
   const savePct = onSale ? Math.round(((compareAt - price) / compareAt) * 100) : 0;
-  const shipping = Number(settings.shipping_flat) || 0;
+  const rule = shippingRule(settings);
+  // This product's own price decides whether it carries the shipping charge.
+  const shipping = productNeedsShipping(price, rule) ? rule.rate : 0;
 
   const details: [string, string | null][] = [
     ["Made by", product.artisan],
@@ -116,7 +119,7 @@ export default async function ProductPage({ params }: { params: Params }) {
             )}
           </div>
           <p className="mt-1 text-sm text-ink/50">
-            {shipping > 0 ? `+ ${formatPrice(shipping)} shipping` : "Free shipping"} · Taxes calculated at checkout
+            {shipping > 0 ? `+ ${formatPrice(shipping)} shipping per order` : "Free shipping"} · Taxes calculated at checkout
           </p>
 
           <div className="mt-6 border-t border-ink/10 pt-6">
@@ -173,7 +176,13 @@ export default async function ProductPage({ params }: { params: Params }) {
             <Accordion title="Shipping">
               <ul className="space-y-1.5">
                 <li>Dispatched within {LEGAL.processingTime} of payment.</li>
-                <li>{shipping > 0 ? `Flat ${formatPrice(shipping)} shipping per order.` : "Free shipping on every order."}</li>
+                <li>
+                  {shipping > 0
+                    ? `Flat ${formatPrice(shipping)} shipping per order, however many items you buy.`
+                    : rule.rate > 0
+                      ? `This item ships free. Orders that include a product over ${formatPrice(rule.minPrice)} pay ${formatPrice(rule.rate)} shipping.`
+                      : "Free shipping on every order."}
+                </li>
               </ul>
               <p className="mt-3">
                 Read our <Link href="/shipping-policy" className="underline underline-offset-2">Shipping Policy</Link>.

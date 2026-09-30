@@ -1,5 +1,5 @@
 import { requireAdmin } from "@/lib/admin";
-import { getSettings } from "@/lib/settings";
+import { getFreshSettings } from "@/lib/settings";
 import { DEFAULT_HERO, resolveHero } from "@/lib/homepage";
 import HeroForm from "./HeroForm";
 
@@ -8,7 +8,7 @@ export const metadata = { title: "Homepage" };
 export default async function AdminHomepage() {
   const { supabase } = await requireAdmin();
   const [settings, { data: products }, { data: categories }] = await Promise.all([
-    getSettings(),
+    getFreshSettings(),
     supabase.from("products").select("id, name, slug, images, active").order("created_at", { ascending: false }).limit(200),
     supabase.from("categories").select("name, slug").order("name"),
   ]);

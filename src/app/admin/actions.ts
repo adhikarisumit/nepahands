@@ -240,7 +240,9 @@ export async function saveSettings(fd: FormData): Promise<Result> {
   const { error } = await supabase
     .from("store_settings")
     .update({
-      shipping_flat: num(fd, "shipping_flat") ?? 0,
+      shipping_flat: Math.max(0, num(fd, "shipping_flat") ?? 0),
+      // Products priced above this pay shipping; at or below it they ship free (see lib/shipping.ts)
+      free_shipping_threshold: Math.max(0, num(fd, "free_shipping_threshold") ?? 0),
       tax_rate: num(fd, "tax_rate") ?? 0,
       announcement: str(fd, "announcement").slice(0, 200) || null,
       contact_email: str(fd, "contact_email") || null,

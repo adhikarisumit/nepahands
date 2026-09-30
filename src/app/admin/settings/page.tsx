@@ -1,8 +1,9 @@
 import { CreditCard, Store, Users } from "lucide-react";
 import { requireAdmin } from "@/lib/admin";
-import { getSettings } from "@/lib/settings";
+import { getFreshSettings } from "@/lib/settings";
 import { paymentMethods, type MethodStatus } from "@/lib/payments";
 import { formatPrice } from "@/lib/utils";
+import { shippingRule } from "@/lib/shipping";
 import SettingsForm from "./SettingsForm";
 import PaymentSettingsForm from "./PaymentSettingsForm";
 import UsersPanel from "./UsersPanel";
@@ -13,12 +14,13 @@ export const metadata = { title: "Settings" };
 export default async function AdminSettings() {
   const { supabase, user } = await requireAdmin();
   const [settings, { data: admins }] = await Promise.all([
-    getSettings(),
+    getFreshSettings(),
     supabase.from("profiles").select("id, email, full_name, created_at").eq("role", "admin").order("created_at"),
   ]);
   const needsMigration = settings.bank_enabled === undefined;
   const methods = paymentMethods(settings);
   const adminList = admins ?? [];
+  const ship = shippingRule(settings);
 
   const methodChip = (label: string, m: MethodStatus) => (
     <Chip
@@ -46,7 +48,7 @@ export default async function AdminSettings() {
         summary={
           <>
             <Chip label="Contact" value={settings.contact_email || "Not set"} tone={settings.contact_email ? "neutral" : "warn"} />
-            <Chip label="Shipping" value={Number(settings.shipping_flat) > 0 ? formatPrice(settings.shipping_flat) : "Free"} />
+            <Chip label="Shipping" value={ship.rate <= 0 ? "Free" : ship.minPrice > 0 ? `${formatPrice(ship.rate)} · items over ${formatPrice(ship.minPrice)}` : formatPrice(ship.rate)} />
             <Chip label="Tax" value={`${Number(settings.tax_rate)}%`} />
             <Chip label="Announcement" value={settings.announcement ? "On" : "Off"} tone={settings.announcement ? "good" : "off"} />
           </>

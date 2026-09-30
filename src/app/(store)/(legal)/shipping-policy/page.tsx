@@ -2,6 +2,7 @@ import Link from "next/link";
 import { LEGAL } from "@/lib/legal";
 import { getSettings } from "@/lib/settings";
 import { formatPrice } from "@/lib/utils";
+import { shippingRule } from "@/lib/shipping";
 
 export const metadata = { title: "Shipping Policy" };
 
@@ -9,7 +10,7 @@ export default async function ShippingPolicyPage() {
   const L = LEGAL;
   // Rates come from Admin → Settings so this page never disagrees with checkout.
   const settings = await getSettings();
-  const flat = Number(settings.shipping_flat);
+  const rule = shippingRule(settings);
 
   return (
     <>
@@ -26,7 +27,21 @@ export default async function ShippingPolicyPage() {
 
       <h2>2. Shipping rates</h2>
       <ul>
-        <li>Standard shipping: <strong>{flat > 0 ? formatPrice(flat) : "free"}</strong> per order.</li>
+        {rule.rate <= 0 ? (
+          <li>Shipping is <strong>free</strong> on every order.</li>
+        ) : rule.minPrice > 0 ? (
+          <>
+            <li>
+              Orders that include a product priced over <strong>{formatPrice(rule.minPrice)}</strong> pay a flat{" "}
+              <strong>{formatPrice(rule.rate)}</strong> shipping charge — once per order, however many items you buy.
+            </li>
+            <li>
+              Orders containing only products priced at {formatPrice(rule.minPrice)} or less ship <strong>free</strong>.
+            </li>
+          </>
+        ) : (
+          <li>Standard shipping: <strong>{formatPrice(rule.rate)}</strong> per order.</li>
+        )}
         <li>The exact shipping cost is always shown at checkout before you pay.</li>
       </ul>
 

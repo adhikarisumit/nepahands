@@ -26,9 +26,19 @@ const loadSettings = unstable_cache(
     if (error) throw new Error(error.message); // don't cache a failed read
     return (data as StoreSettings) ?? FALLBACK;
   },
-  ["store-settings"],
+  ["store-settings-v2"],
   { tags: [SETTINGS_TAG], revalidate: 3600 }
 );
+
+/**
+ * Uncached read for admin forms, so an editor always sees (and saves) the real current values
+ * rather than a cached copy.
+ */
+export async function getFreshSettings(): Promise<StoreSettings> {
+  const { data, error } = await createPublicClient().from("store_settings").select("*").eq("id", 1).maybeSingle();
+  if (error || !data) return getSettings();
+  return data as StoreSettings;
+}
 
 export const getSettings = cache(async (): Promise<StoreSettings> => {
   try {

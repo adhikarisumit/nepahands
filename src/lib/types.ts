@@ -115,7 +115,8 @@ export type StoreSettings = {
   id: number;
   store_name: string;
   shipping_flat: number;
-  free_shipping_threshold: number; // unused — free-shipping feature removed; column kept for compatibility
+  /** Products priced above this pay the shipping charge; at or below it they ship free. 0 = always charge. */
+  free_shipping_threshold: number;
   tax_rate: number;
   announcement: string | null;
   contact_email: string | null;

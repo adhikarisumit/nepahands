@@ -1,6 +1,7 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Coupon, Product, StoreSettings } from "./types";
+import { cartShipping, shippingRule } from "./shipping";
 
 export type RequestedItem = { id: string; quantity: number };
 
@@ -61,7 +62,7 @@ export async function quoteCart(
   });
 
   const { data: settingsRow } = await db.from("store_settings").select("*").eq("id", 1).single();
-  const settings = (settingsRow ?? { shipping_flat: 0, tax_rate: 0 }) as StoreSettings;
+  const settings = (settingsRow ?? { shipping_flat: 0, free_shipping_threshold: 0, tax_rate: 0 }) as StoreSettings;
 
   const subtotal = round(lines.reduce((s, l) => s + l.price * l.quantity, 0));
 
@@ -80,8 +81,9 @@ export async function quoteCart(
   }
 
   const afterDiscount = round(subtotal - discount);
-  // Flat shipping on every order (no free-shipping threshold).
-  const shipping = Number(settings.shipping_flat) || 0;
+  // Flat shipping, charged only when the cart has a product priced above the admin's threshold
+  // (cheaper items ship free). Based on each product's own price, before discounts.
+  const shipping = cartShipping(lines.map((l) => l.price), shippingRule(settings));
   const tax = round((afterDiscount * Number(settings.tax_rate)) / 100);
   const total = round(afterDiscount + shipping + tax);
 
