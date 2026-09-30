@@ -2,6 +2,7 @@ import "server-only";
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf-lib";
 import { BRAND } from "./branding";
 import { LEGAL } from "./legal";
+import { LOGO_MARK_PNG_BASE64, LOGO_MARK_SIZE } from "./logoData";
 import { formatBankAmount, formatRate, parseBankPayment } from "./bankCurrency";
 import { PROVIDER_LABEL, type Order } from "./types";
 import { formatPrice, LOCALE, STORE_TIMEZONE } from "./utils";
@@ -72,19 +73,29 @@ export async function buildReceiptPdf(order: Order): Promise<Uint8Array> {
     }
   };
 
-  // ---- Header ----
-  text(BRAND.name, M, y - 8, { size: 22, font: bold, color: BRAND_COLOR });
-  textRight("RECEIPT", RIGHT, y - 6, { size: 18, font: bold, color: INK });
-  y -= 30;
-  text(BRAND.tagline, M, y, { size: 9, color: MUTED });
+  // ---- Header: logo emblem + store details on the left, receipt details on the right ----
+  let textX = M;
+  try {
+    const logo = await pdf.embedPng(Buffer.from(LOGO_MARK_PNG_BASE64, "base64"));
+    const logoH = 56;
+    const logoW = (LOGO_MARK_SIZE.width / LOGO_MARK_SIZE.height) * logoH;
+    page.drawImage(logo, { x: M, y: y - logoH + 4, width: logoW, height: logoH });
+    textX = M + logoW + 14;
+  } catch {
+    // If the logo can't be embedded, the receipt still renders with the store name alone.
+  }
+  text(BRAND.name, textX, y - 12, { size: 22, font: bold, color: BRAND_COLOR });
+  textRight("RECEIPT", RIGHT, y - 10, { size: 18, font: bold, color: INK });
+  y -= 28;
+  text(BRAND.tagline, textX, y, { size: 9, color: MUTED });
   textRight(`Order #${order.order_number}`, RIGHT, y, { size: 11, font: bold });
-  y -= 14;
-  text(`${BRAND.contact_email}  |  ${BRAND.phone_display}`, M, y, { size: 9, color: MUTED });
+  y -= 13;
+  text(`${BRAND.contact_email}  |  ${BRAND.phone_display}`, textX, y, { size: 9, color: MUTED });
   textRight(`Placed ${fmtDate(order.created_at)}`, RIGHT, y, { size: 9, color: MUTED });
   y -= 12;
-  text(LEGAL.website.replace(/^https?:\/\//, ""), M, y, { size: 9, color: MUTED });
+  text(LEGAL.website.replace(/^https?:\/\//, ""), textX, y, { size: 9, color: MUTED });
   if (order.paid_at) textRight(`Paid ${fmtDate(order.paid_at)}`, RIGHT, y, { size: 9, color: MUTED });
-  y -= 18;
+  y -= 20;
   rule(y);
   y -= 24;
 
