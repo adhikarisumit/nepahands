@@ -5,7 +5,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import OrderDetail from "@/components/OrderDetail";
 import OrderUpdateForm from "./OrderUpdateForm";
 import BankPaymentReview from "./BankPaymentReview";
-import { Mail, Phone } from "lucide-react";
+import { Download, Mail, Phone } from "lucide-react";
+import { SALE_STATUSES } from "@/lib/analytics";
 import { formatBankAmount, formatRate, parseBankPayment } from "@/lib/bankCurrency";
 import { PROVIDER_LABEL, type Order } from "@/lib/types";
 import { formatDate, LOCALE, statusColor, STORE_TIMEZONE } from "@/lib/utils";
@@ -48,6 +49,11 @@ export default async function AdminOrderPage({ params }: { params: Promise<{ id:
           {order.shipping_address?.phone && (
             <a href={`tel:${order.shipping_address.phone}`} className="flex items-center gap-1.5 text-clay-700 hover:underline">
               <Phone size={14} /> {order.shipping_address.phone}
+            </a>
+          )}
+          {SALE_STATUSES.includes(order.status) && (
+            <a href={`/api/orders/${order.id}/receipt`} download className="flex items-center gap-1.5 text-clay-700 hover:underline">
+              <Download size={14} /> Download receipt (PDF)
             </a>
           )}
         </p>

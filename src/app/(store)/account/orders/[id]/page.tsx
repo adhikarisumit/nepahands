@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Check, Clock, Star } from "lucide-react";
+import { Check, Clock, Download, ExternalLink, FileText, Star } from "lucide-react";
 import PaymentProofForm from "@/components/PaymentProofForm";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { SALE_STATUSES } from "@/lib/analytics";
 import OrderDetail from "@/components/OrderDetail";
 import BankTransferPanel from "@/components/BankTransferPanel";
 import { getSettings } from "@/lib/settings";
@@ -31,6 +33,17 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
   const hasProof = !!(order.payment_reference || order.payment_proof_path);
   const bank = order.payment_provider === "bank_transfer" ? parseBankPayment(order.payment_id) : null;
   const settings = awaitingBank && !hasProof ? await getSettings() : null;
+  // A receipt exists once payment is confirmed (paid / processing / shipped / delivered).
+  const isPaid = SALE_STATUSES.includes(order.status);
+
+  // While payment is being verified, let the customer see the proof they uploaded. The file is in a
+  // private bucket; RLS above already proved this order is theirs, so hand out a short-lived link.
+  let proofUrl: string | null = null;
+  if (awaitingBank && order.payment_proof_path) {
+    const { data: signed } = await createAdminClient().storage.from("payment-proofs").createSignedUrl(order.payment_proof_path, 60 * 30);
+    proofUrl = signed?.signedUrl ?? null;
+  }
+  const proofIsPdf = order.payment_proof_path?.endsWith(".pdf") ?? false;
 
   // Once delivered, invite the customer to review each item (reviews require a delivered order).
   let reviewable: { id: string; name: string; slug: string; image: string | null; reviewed: boolean }[] = [];
@@ -51,10 +64,23 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
 
   return (
     <div className="space-y-6">
-      <div>
-        <Link href="/account/orders" className="text-sm text-clay-700 hover:underline">← All orders</Link>
-        <h2 className="mt-1 text-2xl font-semibold">Order #{order.order_number}</h2>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <Link href="/account/orders" className="text-sm text-clay-700 hover:underline">← All orders</Link>
+          <h2 className="mt-1 text-2xl font-semibold">Order #{order.order_number}</h2>
+        </div>
+        {isPaid && (
+          <a href={`/api/orders/${order.id}/receipt`} className="btn-outline" download>
+            <Download size={16} /> Download receipt (PDF)
+          </a>
+        )}
       </div>
+
+      {isPaid && order.payment_provider === "bank_transfer" && (
+        <p className="flex items-center gap-2 rounded-md bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+          <Check size={16} className="shrink-0" /> Your payment has been confirmed. You can download your receipt above.
+        </p>
+      )}
 
       {/* Pay-first bank transfer: already paid with proof attached — waiting for us to verify it. */}
       {awaitingBank && hasProof && (
@@ -89,6 +115,38 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
                 <dd>{order.payment_proof_path ? "Received" : "Not provided"}</dd>
               </div>
             </dl>
+
+            {/* The proof the customer uploaded, so they can check the right file went through */}
+            {proofUrl && (
+              <div className="border-t border-ink/10 pt-4">
+                <p className="text-sm font-semibold">Your uploaded payment receipt</p>
+                <div className="mt-3 flex flex-wrap items-start gap-4">
+                  {proofIsPdf ? (
+                    <a
+                      href={proofUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex h-32 w-32 flex-col items-center justify-center gap-2 rounded-lg border border-ink/10 bg-clay-50 text-xs text-clay-700 hover:border-ink/30"
+                    >
+                      <FileText size={26} /> PDF receipt
+                    </a>
+                  ) : (
+                    <a href={proofUrl} target="_blank" rel="noreferrer" className="block overflow-hidden rounded-lg border border-ink/10 bg-clay-50 hover:border-ink/30" title="Open full size">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={proofUrl} alt="The payment receipt you uploaded" className="max-h-56 w-auto max-w-[220px] object-contain" />
+                    </a>
+                  )}
+                  <div className="text-sm text-ink/60">
+                    <a href={proofUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 font-medium text-clay-700 hover:underline">
+                      <ExternalLink size={14} /> View full size
+                    </a>
+                    <p className="mt-2 max-w-xs text-xs">
+                      Uploaded the wrong file? Use the form below to replace it. Your store receipt (PDF) becomes available here once we confirm the payment.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
             <div className="border-t border-ink/10 pt-4">
               <PaymentProofForm orderId={order.id} submittedReference={order.payment_reference ?? null} proofSubmitted={!!order.payment_proof_path} />
             </div>

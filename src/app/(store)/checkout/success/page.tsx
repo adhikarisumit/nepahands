@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CheckCircle2, Clock } from "lucide-react";
+import { CheckCircle2, Clock, Download } from "lucide-react";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { confirmPaddleTransaction, confirmStripeSession } from "@/lib/orders";
 import { formatPrice } from "@/lib/utils";
@@ -133,10 +133,15 @@ export default async function SuccessPage({ searchParams }: { searchParams: SP }
             : `We're waiting for payment confirmation for order #${order.order_number}. Refresh this page in a moment.`}
         </p>
         <p className="mt-6 text-2xl font-semibold">{formatPrice(order.total, order.currency)}</p>
-        <div className="mt-8 flex justify-center gap-3">
+        <div className="mt-8 flex flex-wrap justify-center gap-3">
           <Link href="/shop" className="btn-outline">Keep shopping</Link>
           <Link href="/account" className="btn-primary">View my orders</Link>
         </div>
+        {paid && (
+          <a href={`/api/orders/${order.id}/receipt`} download className="mt-4 inline-flex items-center gap-1.5 text-sm text-clay-700 underline underline-offset-4">
+            <Download size={14} /> Download receipt (PDF)
+          </a>
+        )}
       </div>
     </div>
   );
