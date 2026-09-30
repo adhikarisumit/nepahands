@@ -314,6 +314,9 @@ export async function savePaymentSettings(fd: FormData): Promise<Result> {
         branch: str(fd, "branch"),
         swift: str(fd, "swift"),
         instructions: str(fd, "instructions").slice(0, 1000),
+        // Bank account currency (e.g. NPR) and an optional fixed exchange rate; blank = live rate
+        currency: /^[A-Z]{3}$/.test(str(fd, "currency").toUpperCase()) ? str(fd, "currency").toUpperCase() : "",
+        manual_rate: (num(fd, "manual_rate") ?? 0) > 0 ? String(num(fd, "manual_rate")) : "",
       },
       bank_qr_url: qr || null,
       updated_at: new Date().toISOString(),

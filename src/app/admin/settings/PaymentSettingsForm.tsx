@@ -8,18 +8,36 @@ import { savePaymentSettings } from "../actions";
 import { useCloseSettingsModal } from "./SettingsSection";
 import type { BankDetails } from "@/lib/types";
 import type { MethodStatus } from "@/lib/payments";
-import { cn } from "@/lib/utils";
+import { cn, formatPrice } from "@/lib/utils";
+import { convertForBank, formatBankAmount, formatRate } from "@/lib/bankCurrency";
 
 type Props = {
   methods: { stripe: MethodStatus; paddle: MethodStatus; bank_transfer: MethodStatus };
   bank: BankDetails;
   qrUrl: string | null;
   env: { stripeLive: boolean; stripeWebhook: boolean; paddleEnv: string; paddleWebhook: boolean };
+  /** Store currency (e.g. "AUD") and today's live rates from it to the supported bank currencies. */
+  storeCurrency: string;
+  liveRates: Record<string, number>;
 };
 
-export default function PaymentSettingsForm({ methods, bank, qrUrl, env }: Props) {
+const CURRENCY_NAMES: Record<string, string> = {
+  NPR: "Nepalese Rupee",
+  INR: "Indian Rupee",
+  AUD: "Australian Dollar",
+  USD: "US Dollar",
+  EUR: "Euro",
+  GBP: "British Pound",
+};
+
+export default function PaymentSettingsForm({ methods, bank, qrUrl, env, storeCurrency, liveRates }: Props) {
   const [pending, start] = useTransition();
   const closeModal = useCloseSettingsModal();
+  const [bankCur, setBankCur] = useState(bank.currency && CURRENCY_NAMES[bank.currency] ? bank.currency : storeCurrency);
+  const [manualRate, setManualRate] = useState(bank.manual_rate ?? "");
+  const foreign = bankCur !== storeCurrency;
+  const live = liveRates[bankCur] ?? 0;
+  const effectiveRate = Number(manualRate) > 0 ? Number(manualRate) : live;
   const [bankOn, setBankOn] = useState(methods.bank_transfer.enabled);
   const [qr, setQr] = useState(qrUrl ?? "");
   const [uploading, setUploading] = useState(false);
@@ -96,6 +114,60 @@ export default function PaymentSettingsForm({ methods, bank, qrUrl, env }: Props
           <Field label="Account number / IBAN" name="account_number" value={bank.account_number} />
           <Field label="Branch" name="branch" value={bank.branch} />
           <Field label="SWIFT / IFSC / routing" name="swift" value={bank.swift} />
+        </div>
+
+        {/* Currency of the bank account — customers are shown the converted amount to pay */}
+        <div className="rounded-lg bg-clay-50 p-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="label" htmlFor="bank-currency">Bank account currency</label>
+              <select id="bank-currency" name="currency" className="input" value={bankCur} onChange={(e) => setBankCur(e.target.value)}>
+                <option value={storeCurrency}>{storeCurrency} — same as store prices</option>
+                {Object.keys(CURRENCY_NAMES)
+                  .filter((c) => c !== storeCurrency)
+                  .map((c) => (
+                    <option key={c} value={c}>{c} — {CURRENCY_NAMES[c]}</option>
+                  ))}
+              </select>
+            </div>
+            {foreign && (
+              <div>
+                <label className="label" htmlFor="manual-rate">Your own rate (optional)</label>
+                <div className="flex items-center gap-2">
+                  <span className="shrink-0 text-sm text-ink/60">1 {storeCurrency} =</span>
+                  <input
+                    id="manual-rate"
+                    name="manual_rate"
+                    type="number"
+                    step="0.0001"
+                    min="0"
+                    className="input"
+                    value={manualRate}
+                    onChange={(e) => setManualRate(e.target.value)}
+                    placeholder={live ? formatRate(live) : "live rate"}
+                  />
+                  <span className="shrink-0 text-sm text-ink/60">{bankCur}</span>
+                </div>
+              </div>
+            )}
+          </div>
+          {foreign && (
+            <p className="mt-3 text-sm text-ink/70">
+              {Number(manualRate) > 0 ? (
+                <>Using <strong>your fixed rate</strong>: 1 {storeCurrency} = {formatRate(Number(manualRate))} {bankCur}.</>
+              ) : live ? (
+                <>Using the <strong>live rate</strong> (updated daily): 1 {storeCurrency} = {formatRate(live)} {bankCur}.</>
+              ) : (
+                <span className="text-red-700">No live rate available for {bankCur} right now — enter your own rate.</span>
+              )}{" "}
+              {effectiveRate > 0 && (
+                <>
+                  A {formatPrice(50)} order is shown to customers as <strong>{formatBankAmount(convertForBank(50, effectiveRate, bankCur), bankCur)}</strong>.
+                </>
+              )}
+              {Number(manualRate) <= 0 && live ? " Leave the rate box empty to keep following the live rate, or enter your bank's rate to fix it." : ""}
+            </p>
+          )}
         </div>
         <div>
           <label className="label">Instructions for customers</label>

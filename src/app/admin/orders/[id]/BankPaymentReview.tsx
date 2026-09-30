@@ -14,6 +14,10 @@ type Props = {
   orderNumber: number;
   /** Remark code shown to the customer at checkout (older orders used ORDER-<number>). */
   code: string;
+  /** Amount in the bank account's currency the customer was asked to pay, e.g. "NPR 4,612" (null = store currency). */
+  bankAmount: string | null;
+  /** Rate locked in at checkout, e.g. "1 AUD = 107.39 NPR". */
+  bankRate: string | null;
   status: OrderStatus;
   total: number;
   currency: string;
@@ -22,7 +26,9 @@ type Props = {
   isPdf: boolean;
 };
 
-export default function BankPaymentReview({ id, orderNumber, code, status, total, currency, reference, proofUrl, isPdf }: Props) {
+export default function BankPaymentReview({ id, orderNumber, code, bankAmount, bankRate, status, total, currency, reference, proofUrl, isPdf }: Props) {
+  // What should have arrived in the bank account (converted amount when the account isn't in the store currency)
+  const expected = bankAmount ?? formatPrice(total, currency);
   const [pending, start] = useTransition();
   const confirm = useConfirm();
   const [viewing, setViewing] = useState(false);
@@ -36,7 +42,17 @@ export default function BankPaymentReview({ id, orderNumber, code, status, total
       </div>
       <div className="grid gap-5 p-5 md:grid-cols-[1fr_auto]">
         <dl className="space-y-2 text-sm">
-          <div className="flex flex-col sm:flex-row sm:gap-2"><dt className="text-ink/50 sm:w-40">Expected amount</dt><dd className="font-semibold">{formatPrice(total, currency)}</dd></div>
+          <div className="flex flex-col sm:flex-row sm:gap-2"><dt className="text-ink/50 sm:w-40">Expected amount</dt>
+            <dd>
+              <span className="text-base font-semibold tabular-nums">{expected}</span>
+              {bankAmount && (
+                <span className="block text-xs text-ink/50">
+                  = {formatPrice(total, currency)} {currency}
+                  {bankRate && ` · ${bankRate} (rate at checkout)`}
+                </span>
+              )}
+            </dd>
+          </div>
           <div className="flex flex-col sm:flex-row sm:gap-2"><dt className="text-ink/50 sm:w-40">Payment remark to look for</dt><dd className="font-mono font-semibold">{code}</dd></div>
           <div className="flex flex-col sm:flex-row sm:gap-2">
             <dt className="text-ink/50 sm:w-40">Customer&apos;s transaction ID</dt>
@@ -98,7 +114,7 @@ export default function BankPaymentReview({ id, orderNumber, code, status, total
       {proofUrl && !isPdf && (
         <Modal open={viewing} onClose={() => setViewing(false)} title={`Payment receipt — order #${orderNumber}`} size="xl">
           <dl className="mb-4 grid gap-3 rounded-md bg-clay-50 p-3 text-sm sm:grid-cols-3">
-            <div><dt className="text-xs text-ink/50">Expected amount</dt><dd className="font-semibold">{formatPrice(total, currency)}</dd></div>
+            <div><dt className="text-xs text-ink/50">Expected amount</dt><dd className="font-semibold">{expected}</dd></div>
             <div><dt className="text-xs text-ink/50">Payment remark</dt><dd className="font-mono">{code}</dd></div>
             <div><dt className="text-xs text-ink/50">Transaction ID</dt><dd className="break-all font-mono">{reference || "—"}</dd></div>
           </dl>
@@ -116,7 +132,7 @@ export default function BankPaymentReview({ id, orderNumber, code, status, total
                 title: "Confirm payment received?",
                 message: (
                   <>
-                    Only confirm once <strong className="text-ink">{formatPrice(total, currency)}</strong> with reference{" "}
+                    Only confirm once <strong className="text-ink">{expected}</strong> with reference{" "}
                     <span className="font-mono text-ink">{code}</span> is in your bank account. The order is marked paid and stock is
                     reduced.
                   </>

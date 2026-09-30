@@ -143,6 +143,10 @@ export type BankDetails = {
   branch?: string;
   swift?: string;
   instructions?: string;
+  /** Currency of the bank account (e.g. "NPR"). Blank = same as the store currency. */
+  currency?: string;
+  /** Optional fixed rate: 1 store-currency unit = this many bank-currency units. Blank = live rate. */
+  manual_rate?: string;
 };
 
 export type CartItem = {

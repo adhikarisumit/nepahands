@@ -9,9 +9,10 @@ import { initializePaddle, type Paddle } from "@paddle/paddle-js";
 import { useCart } from "@/store/cart";
 import OrderSummary from "@/components/OrderSummary";
 import { useQuote } from "@/components/useQuote";
-import { cn, formatPrice, PLACEHOLDER_IMG } from "@/lib/utils";
+import { cn, CURRENCY, formatPrice, PLACEHOLDER_IMG } from "@/lib/utils";
 import type { BankDetails, PaymentProvider, ShippingAddress } from "@/lib/types";
 import BankPayFirst, { type BankProof } from "./BankPayFirst";
+import { convertForBank, formatBankAmount, formatRate } from "@/lib/bankCurrency";
 
 type Props = {
   defaultEmail: string;
@@ -22,6 +23,10 @@ type Props = {
   bankEnabled: boolean;
   bank: BankDetails;
   bankQrUrl: string | null;
+  /** Set when the bank account is in another currency (e.g. NPR): rate to convert the total. */
+  bankFx: { currency: string; rate: number; source: "manual" | "live"; asOf: string | null } | null;
+  /** The live exchange rate couldn't be loaded — bank transfer is paused until it can. */
+  bankFxError: boolean;
 };
 
 /** Short, unambiguous code for the transfer remark (no 0/O or 1/I), e.g. "NH-7K2QXM". */
@@ -37,7 +42,7 @@ const COUNTRIES = [
   ["JP", "Japan"], ["SG", "Singapore"], ["AE", "United Arab Emirates"], ["NZ", "New Zealand"],
 ];
 
-export default function CheckoutForm({ defaultEmail, defaultAddress, isLoggedIn, stripeEnabled, paddleEnabled, bankEnabled, bank, bankQrUrl }: Props) {
+export default function CheckoutForm({ defaultEmail, defaultAddress, isLoggedIn, stripeEnabled, paddleEnabled, bankEnabled, bank, bankQrUrl, bankFx, bankFxError }: Props) {
   const router = useRouter();
   const { items, coupon, clear } = useCart();
   const [mounted, setMounted] = useState(false);
@@ -52,10 +57,19 @@ export default function CheckoutForm({ defaultEmail, defaultAddress, isLoggedIn,
   const [bankCode] = useState(makeBankCode);
   const [proof, setProof] = useState<BankProof>({ reference: "", file: null, paid: false });
   const isBank = provider === "bank_transfer";
-  const bankReady = !!(proof.reference.trim() || proof.file) && proof.paid;
+  const bankReady = !!(proof.reference.trim() || proof.file) && proof.paid && !bankFxError;
 
   useEffect(() => setMounted(true), []);
   const { quote, loading } = useQuote(mounted ? items : [], coupon);
+
+  // What the customer must transfer: converted to the bank account's currency when it differs (e.g. NPR).
+  const bankAmount = !quote
+    ? "—"
+    : bankFx
+      ? formatBankAmount(convertForBank(quote.total, bankFx.rate, bankFx.currency), bankFx.currency)
+      : formatPrice(quote.total);
+  const bankConversion =
+    quote && bankFx ? `= ${formatPrice(quote.total)} ${CURRENCY} · 1 ${CURRENCY} = ${formatRate(bankFx.rate)} ${bankFx.currency}` : null;
 
   useEffect(() => {
     if (!paddleEnabled) return;
@@ -99,7 +113,7 @@ export default function CheckoutForm({ defaultEmail, defaultAddress, isLoggedIn,
         notes,
         coupon: quote?.couponError ? null : coupon,
         items: items.map((i) => ({ id: i.id, quantity: i.quantity })),
-        ...(isBank ? { bankCode, bankReference: proof.reference.trim() } : {}),
+        ...(isBank ? { bankCode, bankReference: proof.reference.trim(), bankRate: bankFx?.rate } : {}),
       };
       let res: Response;
       if (isBank) {
@@ -196,7 +210,8 @@ export default function CheckoutForm({ defaultEmail, defaultAddress, isLoggedIn,
             <BankPayFirst
               bank={bank}
               qrUrl={bankQrUrl}
-              amount={quote ? formatPrice(quote.total) : "—"}
+              amount={bankAmount}
+              conversion={bankConversion}
               code={bankCode}
               proof={proof}
               onChange={setProof}
@@ -230,7 +245,9 @@ export default function CheckoutForm({ defaultEmail, defaultAddress, isLoggedIn,
         </button>
         {isBank && !bankReady && (
           <p className="text-center text-xs text-amber-700">
-            Pay {quote ? formatPrice(quote.total) : "the total"} first, then add your proof of payment to place the order.
+            {bankFxError
+              ? "We can't load the exchange rate right now, so bank transfer is unavailable. Please try again in a minute."
+              : `Pay ${bankAmount} first, then add your proof of payment to place the order.`}
           </p>
         )}
         <p className="text-center text-xs text-ink/50">

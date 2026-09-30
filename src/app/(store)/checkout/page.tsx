@@ -1,6 +1,7 @@
 import { getUserAndProfile } from "@/lib/supabase/server";
 import CheckoutForm from "./CheckoutForm";
-import { getSettings } from "@/lib/settings";
+import { getFreshSettings } from "@/lib/settings";
+import { getBankFx, type BankFx } from "@/lib/fx";
 import { paymentMethods } from "@/lib/payments";
 
 export const metadata = { title: "Checkout" };
@@ -22,10 +23,21 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
           .limit(1)
           .maybeSingle()
       : Promise.resolve({ data: null }),
-    getSettings(),
+    getFreshSettings(), // payment details must be current, not a cached copy
   ]);
   const lastAddress = lastOrder.data?.shipping_address ?? null;
   const methods = paymentMethods(settings);
+
+  // Bank account in another currency (e.g. NPR): convert the total at the current rate.
+  let bankFx: BankFx | null = null;
+  let bankFxError = false;
+  if (methods.bank_transfer.available) {
+    try {
+      bankFx = await getBankFx(settings);
+    } catch {
+      bankFxError = true;
+    }
+  }
 
   return (
     <div className="container-x py-10">
@@ -40,6 +52,8 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
         bankEnabled={methods.bank_transfer.available}
         bank={settings.bank_details ?? {}}
         bankQrUrl={settings.bank_qr_url ?? null}
+        bankFx={bankFx}
+        bankFxError={bankFxError}
       />
     </div>
   );

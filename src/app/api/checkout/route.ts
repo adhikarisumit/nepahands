@@ -9,6 +9,8 @@ import { toMinor } from "@/lib/money";
 import { CURRENCY, siteUrl } from "@/lib/utils";
 import { paymentMethods } from "@/lib/payments";
 import { BRAND } from "@/lib/branding";
+import { getBankFx } from "@/lib/fx";
+import { convertForBank, encodeBankPayment } from "@/lib/bankCurrency";
 import type { PaymentProvider, ShippingAddress, StoreSettings } from "@/lib/types";
 
 type Body = {
@@ -21,6 +23,8 @@ type Body = {
   /** Bank transfer: code the customer put in the transfer remark, and their bank's transaction ID. */
   bankCode?: string;
   bankReference?: string;
+  /** Exchange rate the customer was shown (bank account in another currency). */
+  bankRate?: number;
 };
 
 const REQUIRED_ADDRESS: (keyof ShippingAddress)[] = ["full_name", "line1", "city", "postal_code", "country"];
@@ -80,6 +84,26 @@ export async function POST(req: Request) {
   }
   if (quote.couponError) return bad(quote.couponError);
 
+  // Bank account in another currency (e.g. NPR): lock in the converted amount the customer paid.
+  // We honour the rate they were shown as long as it's still close to the current one.
+  let bankPaymentId = bankCode;
+  if (body.provider === "bank_transfer") {
+    let fx;
+    try {
+      fx = await getBankFx((settings ?? {}) as StoreSettings);
+    } catch {
+      return bad("We couldn't get the exchange rate right now. Please try again in a minute.", 503);
+    }
+    if (fx) {
+      const shown = Number(body.bankRate);
+      if (!(shown > 0) || Math.abs(shown - fx.rate) / fx.rate > 0.03) {
+        return bad("The exchange rate has changed. Please refresh the page and check the amount before paying.", 409);
+      }
+      const code = bankCode ?? `ORDER`;
+      bankPaymentId = encodeBankPayment({ code, currency: fx.currency, amount: convertForBank(quote.total, shown, fx.currency), rate: shown });
+    }
+  }
+
   const address: ShippingAddress = {
     full_name: body.address.full_name.trim(),
     phone: body.address.phone?.trim(),
@@ -125,7 +149,8 @@ export async function POST(req: Request) {
   if (body.provider === "bank_transfer") {
     const update: Record<string, string> = {};
     if (bankReference) update.payment_reference = bankReference;
-    if (bankCode) update.payment_id = bankCode; // the remark code shown to the customer at checkout
+    // Remark code shown at checkout (+ converted amount and rate for a foreign-currency account)
+    if (bankPaymentId) update.payment_id = bankPaymentId;
     if (proof) {
       const ext = proof.type === "application/pdf" ? "pdf" : proof.type.split("/")[1];
       const path = `${order.id}/${Date.now()}.${ext}`;

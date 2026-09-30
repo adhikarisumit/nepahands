@@ -7,7 +7,8 @@ import OrderDetail from "@/components/OrderDetail";
 import BankTransferPanel from "@/components/BankTransferPanel";
 import { getSettings } from "@/lib/settings";
 import type { Order } from "@/lib/types";
-import { cn, PLACEHOLDER_IMG } from "@/lib/utils";
+import { cn, formatPrice, PLACEHOLDER_IMG } from "@/lib/utils";
+import { formatBankAmount, parseBankPayment } from "@/lib/bankCurrency";
 
 export const metadata = { title: "Order details" };
 
@@ -28,6 +29,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
   const current = STEPS.findIndex((s) => s.key === order.status);
   const awaitingBank = order.payment_provider === "bank_transfer" && order.status === "pending";
   const hasProof = !!(order.payment_reference || order.payment_proof_path);
+  const bank = order.payment_provider === "bank_transfer" ? parseBankPayment(order.payment_id) : null;
   const settings = awaitingBank && !hasProof ? await getSettings() : null;
 
   // Once delivered, invite the customer to review each item (reviews require a delivered order).
@@ -65,11 +67,17 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
             <p className="text-sm text-ink/70">
               Your order will be confirmed as soon as the transfer shows in our account. You don&apos;t need to do anything else.
             </p>
-            <dl className="grid gap-2 text-sm sm:grid-cols-3">
-              {order.payment_id && (
+            <dl className="grid gap-x-4 gap-y-2 text-sm sm:grid-cols-2 lg:grid-cols-4">
+              <div>
+                <dt className="text-ink/50">Amount paid</dt>
+                <dd className="font-medium tabular-nums">
+                  {bank?.currency && bank.amount != null ? formatBankAmount(bank.amount, bank.currency) : formatPrice(order.total, order.currency)}
+                </dd>
+              </div>
+              {bank?.code && (
                 <div>
                   <dt className="text-ink/50">Payment remark</dt>
-                  <dd className="font-mono">{order.payment_id}</dd>
+                  <dd className="font-mono">{bank.code}</dd>
                 </div>
               )}
               <div>

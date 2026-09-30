@@ -6,6 +6,7 @@ import OrderDetail from "@/components/OrderDetail";
 import OrderUpdateForm from "./OrderUpdateForm";
 import BankPaymentReview from "./BankPaymentReview";
 import { Mail, Phone } from "lucide-react";
+import { formatBankAmount, formatRate, parseBankPayment } from "@/lib/bankCurrency";
 import { PROVIDER_LABEL, type Order } from "@/lib/types";
 import { formatDate, LOCALE, statusColor, STORE_TIMEZONE } from "@/lib/utils";
 
@@ -25,6 +26,7 @@ export default async function AdminOrderPage({ params }: { params: Promise<{ id:
     proofUrl = signed?.signedUrl ?? null;
   }
 
+  const bank = order.payment_provider === "bank_transfer" ? parseBankPayment(order.payment_id) : null;
   const placed = new Date(order.created_at).toLocaleString(LOCALE, { dateStyle: "medium", timeStyle: "short", timeZone: STORE_TIMEZONE });
 
   return (
@@ -54,7 +56,9 @@ export default async function AdminOrderPage({ params }: { params: Promise<{ id:
         <BankPaymentReview
           id={order.id}
           orderNumber={order.order_number}
-          code={order.payment_id || `ORDER-${order.order_number}`}
+          code={bank?.code || `ORDER-${order.order_number}`}
+          bankAmount={bank?.currency && bank.amount != null ? formatBankAmount(bank.amount, bank.currency) : null}
+          bankRate={bank?.currency && bank.rate ? `1 ${order.currency} = ${formatRate(bank.rate)} ${bank.currency}` : null}
           status={order.status}
           total={Number(order.total)}
           currency={order.currency}

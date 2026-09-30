@@ -9,8 +9,10 @@ export type BankProof = { reference: string; file: File | null; paid: boolean };
 type Props = {
   bank: BankDetails;
   qrUrl: string | null;
-  /** Formatted amount to pay, e.g. "$56.00". */
+  /** Formatted amount to pay in the bank account's currency, e.g. "NPR 4,612" or "$56.00". */
   amount: string;
+  /** Shown under the amount when it was converted, e.g. "= $42.94 AUD · 1 AUD = 107.39 NPR". */
+  conversion?: string | null;
   /** Short code the customer puts in the transfer remark so the payment can be matched. */
   code: string;
   proof: BankProof;
@@ -18,7 +20,7 @@ type Props = {
 };
 
 /** Pay-first bank transfer: pay with the details shown, then attach proof before placing the order. */
-export default function BankPayFirst({ bank, qrUrl, amount, code, proof, onChange }: Props) {
+export default function BankPayFirst({ bank, qrUrl, amount, conversion, code, proof, onChange }: Props) {
   const rows: [string, string | undefined][] = [
     ["Bank", bank.bank_name],
     ["Account name", bank.account_name],
@@ -38,6 +40,7 @@ export default function BankPayFirst({ bank, qrUrl, amount, code, proof, onChang
               <div className="rounded-lg bg-clay-700 p-4 text-white">
                 <p className="text-xs uppercase tracking-wide opacity-70">Amount to pay</p>
                 <p className="mt-1 text-2xl font-bold tabular-nums">{amount}</p>
+                {conversion && <p className="mt-1 text-xs tabular-nums opacity-80">{conversion}</p>}
               </div>
               <div className="rounded-lg border border-dashed border-clay-300 bg-clay-50 p-4">
                 <p className="text-xs uppercase tracking-wide text-ink/50">Payment remark / reference</p>

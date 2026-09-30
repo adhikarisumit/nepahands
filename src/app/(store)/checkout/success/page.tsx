@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { confirmPaddleTransaction, confirmStripeSession } from "@/lib/orders";
 import { formatPrice } from "@/lib/utils";
 import BankTransferPanel from "@/components/BankTransferPanel";
+import { formatBankAmount, parseBankPayment } from "@/lib/bankCurrency";
 import type { Order, StoreSettings } from "@/lib/types";
 import ClearCart from "./ClearCart";
 
@@ -40,6 +41,7 @@ export default async function SuccessPage({ searchParams }: { searchParams: SP }
 
   // Bank transfer (pay-first): the customer has paid and attached proof — we're verifying it.
   const hasProof = !!(order.payment_reference || order.payment_proof_path);
+  const bank = order.payment_provider === "bank_transfer" ? parseBankPayment(order.payment_id) : null;
   if (order.payment_provider === "bank_transfer" && order.status === "pending" && hasProof) {
     return (
       <div className="container-x py-16">
@@ -53,12 +55,17 @@ export default async function SuccessPage({ searchParams }: { searchParams: SP }
           <dl className="mx-auto mt-6 max-w-xs space-y-2 rounded-lg bg-clay-50 p-4 text-left text-sm">
             <div className="flex justify-between gap-4">
               <dt className="text-ink/60">Amount paid</dt>
-              <dd className="font-semibold tabular-nums">{formatPrice(order.total, order.currency)}</dd>
+              <dd className="text-right font-semibold tabular-nums">
+                {bank?.currency && bank.amount != null ? formatBankAmount(bank.amount, bank.currency) : formatPrice(order.total, order.currency)}
+                {bank?.currency && (
+                  <span className="block text-xs font-normal text-ink/50">= {formatPrice(order.total, order.currency)} {order.currency}</span>
+                )}
+              </dd>
             </div>
-            {order.payment_id && (
+            {bank?.code && (
               <div className="flex justify-between gap-4">
                 <dt className="text-ink/60">Payment remark</dt>
-                <dd className="font-mono">{order.payment_id}</dd>
+                <dd className="font-mono">{bank.code}</dd>
               </div>
             )}
             {order.payment_reference && (

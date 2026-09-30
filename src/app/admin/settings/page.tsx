@@ -2,8 +2,9 @@ import { CreditCard, Store, Users } from "lucide-react";
 import { requireAdmin } from "@/lib/admin";
 import { getFreshSettings } from "@/lib/settings";
 import { paymentMethods, type MethodStatus } from "@/lib/payments";
-import { formatPrice } from "@/lib/utils";
+import { CURRENCY, formatPrice } from "@/lib/utils";
 import { shippingRule } from "@/lib/shipping";
+import { bankCurrency, getLiveRate } from "@/lib/fx";
 import SettingsForm from "./SettingsForm";
 import PaymentSettingsForm from "./PaymentSettingsForm";
 import UsersPanel from "./UsersPanel";
@@ -21,6 +22,15 @@ export default async function AdminSettings() {
   const methods = paymentMethods(settings);
   const adminList = admins ?? [];
   const ship = shippingRule(settings);
+
+  // Today's live rates from the store currency, for the bank-currency setting
+  const rateEntries = await Promise.all(
+    ["NPR", "INR", "AUD", "USD", "EUR", "GBP"]
+      .filter((c) => c !== CURRENCY)
+      .map(async (c) => [c, (await getLiveRate(c))?.rate ?? 0] as const)
+  );
+  const liveRates = Object.fromEntries(rateEntries.filter(([, r]) => r > 0));
+  const bankCur = bankCurrency(settings);
 
   const methodChip = (label: string, m: MethodStatus) => (
     <Chip
@@ -71,6 +81,7 @@ export default async function AdminSettings() {
               {methodChip("Stripe", methods.stripe)}
               {methodChip("Paddle", methods.paddle)}
               {methodChip("Bank transfer", methods.bank_transfer)}
+              {bankCur !== CURRENCY && <Chip label="Bank currency" value={bankCur} />}
             </>
           )
         }
@@ -91,6 +102,8 @@ export default async function AdminSettings() {
             paddleEnv: process.env.NEXT_PUBLIC_PADDLE_ENV || "sandbox",
             paddleWebhook: !!process.env.PADDLE_WEBHOOK_SECRET,
           }}
+          storeCurrency={CURRENCY}
+          liveRates={liveRates}
         />
       </SettingsSection>
 
