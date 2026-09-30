@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/admin";
 import { cn, formatDate, formatPrice, statusColor } from "@/lib/utils";
-import { ORDER_STATUSES, type Order } from "@/lib/types";
+import { Hash, Paperclip } from "lucide-react";
+import { ORDER_STATUSES, PROVIDER_LABEL, type Order } from "@/lib/types";
+import OrderRow from "./OrderRow";
 
 export const metadata = { title: "Orders" };
 
@@ -50,23 +52,43 @@ export default async function AdminOrders({ searchParams }: { searchParams: Prom
       </div>
       <div className="card overflow-x-auto">
         <table className="table-x">
-          <thead><tr><th>Order</th><th>Date</th><th>Customer</th><th>Items</th><th>Payment</th><th>Status</th><th className="text-right">Total</th></tr></thead>
+          <thead><tr><th>Order</th><th>Date</th><th>Customer</th><th>Items</th><th>Payment</th><th>Status</th><th className="text-right">Total</th><th></th></tr></thead>
           <tbody>
-            {orders.map((o) => (
-              <tr key={o.id} className="hover:bg-clay-50">
-                <td><Link href={`/admin/orders/${o.id}`} className="font-medium text-clay-700 hover:underline">#{o.order_number}</Link></td>
-                <td className="whitespace-nowrap">{formatDate(o.created_at)}</td>
-                <td>
-                  <div className="max-w-48 truncate">{o.shipping_address?.full_name}</div>
-                  <div className="max-w-48 truncate text-xs text-ink/50">{o.email}</div>
-                </td>
-                <td>{o.order_items?.reduce((n, i) => n + i.quantity, 0) ?? 0}</td>
-                <td className="capitalize">{o.payment_provider}</td>
-                <td><span className={`badge ${statusColor[o.status]}`}>{o.status}</span></td>
-                <td className="text-right font-medium">{formatPrice(o.total, o.currency)}</td>
-              </tr>
-            ))}
-            {orders.length === 0 && <tr><td colSpan={7} className="py-10 text-center text-ink/50">No orders found.</td></tr>}
+            {orders.map((o) => {
+              const hasReceipt = !!o.payment_proof_path;
+              const hasReference = !!o.payment_reference;
+              const needsCheck = o.payment_provider === "bank_transfer" && o.status === "pending";
+              return (
+                <OrderRow key={o.id} href={`/admin/orders/${o.id}`} number={o.order_number}>
+                  <td className="whitespace-nowrap">{formatDate(o.created_at)}</td>
+                  <td>
+                    <div className="max-w-48 truncate">{o.shipping_address?.full_name}</div>
+                    <div className="max-w-48 truncate text-xs text-ink/50">{o.email}</div>
+                  </td>
+                  <td>{o.order_items?.reduce((n, i) => n + i.quantity, 0) ?? 0}</td>
+                  <td>
+                    <div>{o.payment_provider ? PROVIDER_LABEL[o.payment_provider] : "—"}</div>
+                    {o.payment_provider === "bank_transfer" && (
+                      <div className="mt-0.5 flex items-center gap-1 text-xs text-ink/50">
+                        {hasReceipt ? (
+                          <><Paperclip size={12} /> Receipt attached</>
+                        ) : hasReference ? (
+                          <><Hash size={12} /> Transaction ID only</>
+                        ) : (
+                          "No proof yet"
+                        )}
+                      </div>
+                    )}
+                  </td>
+                  <td>
+                    <span className={`badge ${statusColor[o.status]}`}>{o.status}</span>
+                    {needsCheck && <div className="mt-1 text-xs font-medium text-amber-700">Needs verification</div>}
+                  </td>
+                  <td className="text-right font-medium tabular-nums">{formatPrice(o.total, o.currency)}</td>
+                </OrderRow>
+              );
+            })}
+            {orders.length === 0 && <tr><td colSpan={8} className="py-10 text-center text-ink/50">No orders found.</td></tr>}
           </tbody>
         </table>
       </div>
