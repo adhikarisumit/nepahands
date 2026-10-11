@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { saveProduct } from "../actions";
 import type { Category, Product } from "@/lib/types";
 import { slugify } from "@/lib/utils";
+import { toWhiteBackground } from "@/lib/whiteBackground";
 
 type Props = { product?: Product | null; categories: Category[]; onDone: () => void; onCancel: () => void };
 
@@ -14,6 +15,8 @@ type Props = { product?: Product | null; categories: Category[]; onDone: () => v
 export default function ProductForm({ product, categories, onDone, onCancel }: Props) {
   const [images, setImages] = useState<string[]>(product?.images ?? []);
   const [uploading, setUploading] = useState(false);
+  const [status, setStatus] = useState("");
+  const [whiteBg, setWhiteBg] = useState(true);
   const [urlInput, setUrlInput] = useState("");
   const [slug, setSlug] = useState(product?.slug ?? "");
   const [pending, start] = useTransition();
@@ -23,8 +26,19 @@ export default function ProductForm({ product, categories, onDone, onCancel }: P
     setUploading(true);
     const supabase = createClient();
     try {
-      for (const file of Array.from(files)) {
-        if (!file.type.startsWith("image/")) continue;
+      const list = Array.from(files).filter((f) => f.type.startsWith("image/"));
+      for (const [n, original] of list.entries()) {
+        let file = original;
+        if (whiteBg) {
+          setStatus(list.length > 1 ? `White background ${n + 1}/${list.length}` : "White background");
+          try {
+            file = await toWhiteBackground(original);
+          } catch (e) {
+            console.error(e);
+            toast.error(`Couldn't clean the background of ${original.name}, uploading the original`);
+          }
+        }
+        setStatus("Uploading");
         const ext = file.name.split(".").pop() || "jpg";
         const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
         const { error } = await supabase.storage.from("product-images").upload(path, file, { cacheControl: "31536000" });
@@ -36,6 +50,7 @@ export default function ProductForm({ product, categories, onDone, onCancel }: P
       toast.error((e as Error).message);
     } finally {
       setUploading(false);
+      setStatus("");
     }
   };
 
@@ -111,10 +126,14 @@ export default function ProductForm({ product, categories, onDone, onCancel }: P
               ))}
               <label className="flex aspect-square cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-clay-200 text-xs text-ink/50 hover:border-clay-400">
                 {uploading ? <Loader2 className="animate-spin" size={18} /> : <ImagePlus size={18} />}
-                Upload
-                <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => upload(e.target.files)} />
+                <span className="px-1 text-center">{uploading ? `${status}…` : "Upload"}</span>
+                <input type="file" accept="image/*" multiple className="hidden" disabled={uploading} onChange={(e) => { upload(e.target.files); e.target.value = ""; }} />
               </label>
             </div>
+            <label className="mt-2 flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={whiteBg} onChange={(e) => setWhiteBg(e.target.checked)} />
+              White background (removes the photo background before upload)
+            </label>
             <div className="mt-2 flex gap-2">
               <input
                 className="input"
