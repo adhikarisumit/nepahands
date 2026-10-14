@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Home, LayoutGrid, LogIn, LogOut, Search, ShoppingBag, Sparkles, Store, UserPlus, X, BookOpen } from "lucide-react";
 import BrandLogo from "./BrandLogo";
+import CurrencySwitcher from "./CurrencySwitcher";
 import { ACCOUNT_LINKS, ADMIN_LINK, isActiveLink } from "./accountLinks";
 import { LEGAL_PAGES } from "@/lib/legal";
 import { cn } from "@/lib/utils";
@@ -105,6 +106,11 @@ export default function MobileDrawer({ open, onClose, storeName, logoUrl, isLogg
               </Link>
             ))}
           </nav>
+
+          <div className="mt-4 flex items-center justify-between px-3">
+            <span className="text-sm text-ink/60">Show prices in</span>
+            <CurrencySwitcher />
+          </div>
 
           <div className="my-4 border-t border-ink/10" />
 

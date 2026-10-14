@@ -13,6 +13,8 @@ import AddToCart from "./AddToCart";
 import WishlistButton from "./WishlistButton";
 import Reviews from "./Reviews";
 import Stars from "./Stars";
+import Price from "@/components/Price";
+import CurrencyNote from "@/components/CurrencyNote";
 import type { Product, Review } from "@/lib/types";
 import { formatPrice } from "@/lib/utils";
 
@@ -110,17 +112,18 @@ export default async function ProductPage({ params }: { params: Params }) {
           )}
 
           <div className="mt-5 flex flex-wrap items-center gap-3">
-            <span className="text-2xl font-semibold tabular-nums sm:text-3xl">{formatPrice(price)}</span>
+            <span className="text-2xl font-semibold tabular-nums sm:text-3xl"><Price amount={price} /></span>
             {onSale && (
               <>
-                <span className="text-lg text-ink/40 line-through tabular-nums">{formatPrice(compareAt)}</span>
+                <span className="text-lg text-ink/40 line-through tabular-nums"><Price amount={compareAt} /></span>
                 <span className="rounded bg-clay-700 px-2 py-0.5 text-xs font-medium text-white">Save {savePct}%</span>
               </>
             )}
           </div>
           <p className="mt-1 text-sm text-ink/50">
-            {shipping > 0 ? `+ ${formatPrice(shipping)} shipping per order` : "Free shipping"} · Taxes calculated at checkout
+            {shipping > 0 ? <>+ <Price amount={shipping} /> shipping per order</> : "Free shipping"} · Taxes calculated at checkout
           </p>
+          <CurrencyNote className="mt-1 text-xs text-ink/50" />
 
           <div className="mt-6 border-t border-ink/10 pt-6">
             <StockStatus stock={product.stock} />

@@ -5,6 +5,7 @@ import { X } from "lucide-react";
 import { useCart, cartSubtotal } from "@/store/cart";
 import { CURRENCY, formatPrice } from "@/lib/utils";
 import type { QuoteResult } from "./useQuote";
+import { useFormatPrice } from "./Price";
 
 type Props = {
   quote: QuoteResult | null;
@@ -20,6 +21,7 @@ export default function OrderSummary({ quote, loading, footer, converted }: Prop
   const [code, setCode] = useState("");
   const [showCode, setShowCode] = useState(false);
   const subtotal = quote?.subtotal ?? cartSubtotal(items);
+  const shown = useFormatPrice();
 
   const applyCode = () => {
     if (!code.trim()) return;
@@ -86,6 +88,11 @@ export default function OrderSummary({ quote, loading, footer, converted }: Prop
           {formatPrice(quote?.total ?? subtotal)}
         </span>
       </div>
+      {shown.converted && !converted && (
+        <p className="mt-1 text-right text-xs text-ink/50">
+          ≈ {shown.format(quote?.total ?? subtotal)} · charged in {CURRENCY}
+        </p>
+      )}
       {converted && quote && (
         <div className={`mt-3 rounded-md bg-clay-50 px-3 py-2.5 transition-opacity ${loading ? "opacity-40" : ""}`}>
           <div className="flex items-baseline justify-between gap-3">

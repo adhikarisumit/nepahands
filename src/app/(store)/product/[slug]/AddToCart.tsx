@@ -7,10 +7,11 @@ import { Minus, Plus } from "lucide-react";
 import toast from "react-hot-toast";
 import { useCart } from "@/store/cart";
 import type { CartItem } from "@/lib/types";
-import { formatPrice } from "@/lib/utils";
+import { useFormatPrice } from "@/components/Price";
 
 export default function AddToCart({ product, isLoggedIn }: { product: Omit<CartItem, "quantity">; isLoggedIn: boolean }) {
   const [qty, setQty] = useState(1);
+  const { format: formatPrice } = useFormatPrice();
   const add = useCart((s) => s.add);
   const router = useRouter();
   const pathname = usePathname();

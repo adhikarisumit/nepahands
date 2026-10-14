@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Product } from "@/lib/types";
-import { formatPrice, PLACEHOLDER_IMG } from "@/lib/utils";
+import { PLACEHOLDER_IMG } from "@/lib/utils";
+import Price from "./Price";
 import SmartImage from "./SmartImage";
 
 export default function ProductCard({ product, priority }: { product: Product; priority?: boolean }) {
@@ -22,8 +23,8 @@ export default function ProductCard({ product, priority }: { product: Product; p
         {product.artisan && <p className="text-xs uppercase tracking-wide text-ink/50">{product.artisan}</p>}
         <h3 className="mt-0.5 font-sans text-sm font-medium text-ink group-hover:text-clay-700">{product.name}</h3>
         <div className="mt-1 flex items-center gap-2 text-sm">
-          <span className="font-semibold">{formatPrice(product.price)}</span>
-          {onSale && <span className="text-ink/40 line-through">{formatPrice(product.compare_at_price!)}</span>}
+          <span className="font-semibold"><Price amount={product.price} /></span>
+          {onSale && <span className="text-ink/40 line-through"><Price amount={product.compare_at_price!} /></span>}
         </div>
       </div>
     </Link>

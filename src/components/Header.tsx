@@ -8,6 +8,7 @@ import { useCart, cartCount } from "@/store/cart";
 import UserMenu from "./UserMenu";
 import BrandLogo from "./BrandLogo";
 import MobileDrawer from "./MobileDrawer";
+import CurrencySwitcher from "./CurrencySwitcher";
 
 type Props = {
   isLoggedIn: boolean;
@@ -71,6 +72,7 @@ export default function Header({ isLoggedIn, isAdmin, announcement, storeName, l
           </form>
 
           <div className="ml-auto flex shrink-0 items-center gap-0.5 sm:gap-1 md:ml-2">
+            <CurrencySwitcher className="mr-1 hidden lg:inline-flex" />
             {/* Wishlist + account dropdown on desktop; on phones/tablets these live in the drawer */}
             <Link href="/wishlist" className="btn-ghost hidden px-3 lg:inline-flex" title="Wishlist">
               <Heart size={20} />
